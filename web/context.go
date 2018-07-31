@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gleez/smtpd/data"
+	"github.com/fitraditya/surelin-smtpd/data"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"gopkg.in/mgo.v2/bson"
