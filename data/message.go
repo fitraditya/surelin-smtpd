@@ -354,7 +354,8 @@ func MimeBodyDecode(str string, charset string, encoding string) string {
 	if charset != "UTF-8" {
 		charset = fixCharset(charset)
 		// eg. charset can be "ISO-2022-JP"
-		if convstr, err := iconv.Conv(str, "UTF-8", charset); err == nil {
+    dec := new(mime.WordDecoder)
+		if convstr, err := dec.DecodeHeader(str); err == nil {
 			return convstr
 		}
 	}
