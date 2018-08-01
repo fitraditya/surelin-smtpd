@@ -56,7 +56,7 @@ func (ds *DataStore) StorageDisconnect() {
 }
 
 func (ds *DataStore) SaveMail() {
-	log.LogTrace("Running SaveMail Rotuines")
+	log.LogTrace("Running SaveMail Routines")
 	var err error
 	var recon bool
 
