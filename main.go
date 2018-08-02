@@ -123,8 +123,13 @@ func main() {
   smtpServer = smtpd.NewSmtpServer(config.GetSmtpConfig(), ds)
   smtpServer.Start()
 
+  // Startup POP3 server, block until it exits
+  pop3Server = pop3d.NewPop3Server(config.GetPop3Config(), ds)
+  pop3Server.Start()
+
   // Wait for active connections to finish
   smtpServer.Drain()
+  pop3Server.Drain()
 }
 
 // openLogFile creates or appends to the logfile passed on commandline
@@ -169,6 +174,11 @@ func signalProcessor(c <-chan os.Signal) {
         smtpServer.Stop()
       } else {
         log.LogError("smtpServer was nil during shutdown")
+      }
+      if pop3Server != nil {
+        pop3Server.Stop()
+      } else {
+        log.LogError("pop3Server was nil during shutdown")
       }
     }
   }

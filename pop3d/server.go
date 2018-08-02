@@ -257,12 +257,12 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     c.logTrace(">+OK " + strconv.Itoa(nr_messages) + " " + strconv.Itoa(size_messages))
   } else if cmd == "LIST" && c.state == STATE_TRANSACTION {
     c.logTrace("List accepted")
-    nr, tot_size, Message_head := getList(c.tmp_client)
-    c.Write("+OK " + nr + " messages (" + tot_size + " octets)")
+    nr, tot_size, Message_head := c.server.Store.ListMails(c.tmp_client)
+    c.Write("+OK " + strconv.Itoa(nr) + " messages (" + strconv.Itoa(tot_size) + " octets)")
 
     // Print all messages
     for _, val := range Message_head {
-      c.Write(val.Id + " " + val.Size)
+      c.Write(strconv.Itoa(val.Id) + " " + strconv.Itoa(val.Size))
     }
     // Ending
     c.Write(".")
@@ -279,28 +279,10 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
   } else if cmd == "TOP" && c.state == STATE_TRANSACTION {
     arg, _ := c.parseArgs(args, 0)
     nr, _ := strconv.Atoi(arg)
-    headers := getTop(c.tmp_client, nr)
+    headers := c.server.Store.TopMail(c.tmp_client, nr)
 
     c.Write("+OK Top message follows")
     c.Write(headers + "\r\n\r\n.")
-
-    return false
-  } else if cmd == "RETR" && c.state == STATE_TRANSACTION {
-    arg, _ := c.parseArgs(args, 0)
-    nr, _ := strconv.Atoi(arg)
-    message, size, _ := getMessage(c.tmp_client, nr)
-
-    c.Write("+OK " + strconv.Itoa(size) + " octets")
-    c.Write(message.Headers + "\r\n\r\n" + message.Message + "\r\n.")
-    c.logTrace(">+OK " + strconv.Itoa(size) + " octets")
-    c.logTrace(message.Message + "\r\n.")
-
-    return false
-  } else if cmd == "DELE" && c.state == STATE_TRANSACTION {
-    arg, _ := c.parseArgs(args, 0)
-    nr, _ := strconv.Atoi(arg)
-    deleteMessage(c.tmp_client, nr)
-    c.Write("+OK")
 
     return false
   } else if cmd == "QUIT" {

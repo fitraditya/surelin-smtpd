@@ -76,6 +76,11 @@ type Attachment struct {
   Size             int
 }
 
+type MessageHead struct {
+  Id    int
+  Size  int
+}
+
 // TODO support nested MIME content
 func ParseSMTPMessage(m *config.SMTPMessage, hostname string, mimeParser bool) *Message {
   arr := make([]*Path, 0)

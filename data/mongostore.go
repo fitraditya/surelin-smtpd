@@ -204,7 +204,7 @@ func (mongo *MongoDB) IsUserExists(email string) (*User, error) {
 	return u, nil
 }
 
-func (mongo *MongoDB) Stat(username string) (*Messages, error) {
+func (mongo *MongoDB) Fetch(username string) (*Messages, error) {
 	messages := &Messages{}
 	err := mongo.Messages.Find(nil).Select(bson.M{"to": bson.M{"$elemMatch": bson.M{"mailbox": username}}}).All(messages)
 	if err != nil {

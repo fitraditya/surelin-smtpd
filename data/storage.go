@@ -4,6 +4,7 @@ import (
   "fmt"
   "io"
   "time"
+  "encoding/json"
 
   "github.com/fitraditya/surelin-smtpd/config"
   "github.com/fitraditya/surelin-smtpd/log"
@@ -92,7 +93,7 @@ func (ds *DataStore) SaveMail() {
 }
 
 func (ds *DataStore) StatMails(username string) (nr int, size int) {
-  messages, err := ds.Storage.(*MongoDB).Stat(username)
+  messages, err := ds.Storage.(*MongoDB).Fetch(username)
   if err != nil {
     return 0, 0
   }
@@ -107,9 +108,53 @@ func (ds *DataStore) StatMails(username string) (nr int, size int) {
     }
     sum = sum + len(m.Content.Body)
   }
-  
+
   // return the count and the size in octets (bytes)
   return len(*messages), sum*8
+}
+
+func (ds *DataStore) ListMails(username string) (nr int, size int, head []MessageHead) {
+  messages, err := ds.Storage.(*MongoDB).Fetch(username)
+  if err != nil {
+    return 0, 0, nil
+  }
+
+  var sum = 0
+  var sz = 0
+  var heads []MessageHead
+  // count how many letters there are in all the headers and messages
+  for i, m := range *messages {
+    size = 0
+    for _, c := range m.Content.Headers {
+      for _, h := range c {
+        sz = sz + len(h)
+      }
+    }
+
+    size_ := sz
+    sz = sz + len(m.Content.Body)*8
+    mh := MessageHead{
+      Id: i+1,
+      Size: sz,
+    }
+    heads = append(heads, mh)
+    sum = sum + size_ + len(m.Content.Body)
+  }
+
+  // return the count and the size in octets (bytes)
+  return len(heads), sum*8, heads
+}
+
+func (ds *DataStore) TopMail(username string, id int) (headers string) {
+  messages, err := ds.Storage.(*MongoDB).Fetch(username)
+  if err != nil {
+    return ""
+  }
+
+  out, err := json.Marshal((*messages)[id-1].Content.Headers)
+
+  // get the specified message
+  return string(out)
 }
 
 func (ds *DataStore) CheckUserExists(email string) bool {

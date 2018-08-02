@@ -411,6 +411,28 @@ func parsePop3Config() error {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
+  option = "debug"
+  if Config.HasOption(section, option) {
+    flag, err := Config.Bool(section, option)
+    if err != nil {
+      return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
+    }
+    pop3Config.Debug = flag
+  } else {
+    pop3Config.Debug = false
+  }
+
+  option = "debug.path"
+  if Config.HasOption(section, option) {
+    str, err := Config.String(section, option)
+    if err != nil {
+      return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
+    }
+    pop3Config.DebugPath = str
+  } else {
+    pop3Config.DebugPath = "/tmp/smtpd"
+  }
+
   return nil
 }
 
