@@ -5,23 +5,6 @@
 package main
 
 import (
-<<<<<<< HEAD
-	"flag"
-	"fmt"
-  "log"
-	"os"
-	"os/signal"
-	"runtime"
-	"syscall"
-	"time"
-
-	"github.com/fitraditya/surelin-smtpd/config"
-	"github.com/fitraditya/surelin-smtpd/data"
-	"github.com/fitraditya/surelin-smtpd/log"
-	"github.com/fitraditya/surelin-smtpd/smtpd"
-	"github.com/fitraditya/surelin-smtpd/pop3d"
-	"github.com/fitraditya/surelin-smtpd/web"
-=======
   "flag"
   "fmt"
   golog "log"
@@ -35,8 +18,8 @@ import (
   "github.com/fitraditya/surelin-smtpd/data"
   "github.com/fitraditya/surelin-smtpd/log"
   "github.com/fitraditya/surelin-smtpd/smtpd"
+  "github.com/fitraditya/surelin-smtpd/pop3d"
   "github.com/fitraditya/surelin-smtpd/web"
->>>>>>> 6bacfb8998381ef7903dc8af678139dbbe117a8b
 )
 
 var (
@@ -56,16 +39,9 @@ var (
   // The file we send log output to, will be nil for stderr or stdout
   logf *os.File
 
-<<<<<<< HEAD
-	// Server instances
-	smtpServer *smtpd.Server
-  pop3Server *pop3d.Server
-=======
   // Server instances
   smtpServer *smtpd.Server
-
-/*  pop3Server *pop3d.Server*/
->>>>>>> 6bacfb8998381ef7903dc8af678139dbbe117a8b
+  pop3Server *pop3d.Server
 )
 
 func main() {

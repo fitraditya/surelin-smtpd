@@ -31,7 +31,6 @@ func NewDataStore() *DataStore {
 }
 
 func (ds *DataStore) StorageConnect() {
-
   if ds.Config.Storage == "mongodb" {
     log.LogInfo("Trying MongoDB storage")
     s := CreateMongoDB(ds.Config)
@@ -73,7 +72,7 @@ func (ds *DataStore) SaveMail() {
         ds.Storage = CreateMongoDB(ds.Config)
         recon = true
 
-        //try to save again
+        // try to save again
         mc.Hash, err = ds.Storage.(*MongoDB).Store(msg)
       }
 
@@ -82,7 +81,7 @@ func (ds *DataStore) SaveMail() {
         log.LogTrace("Save Mail Client hash : <%s>", mc.Hash)
         mc.Notify <- 1
 
-        //Notify web socket
+        // notify web socket
         ds.NotifyMailChan <- mc.Hash
       } else {
         mc.Notify <- -1
@@ -90,6 +89,51 @@ func (ds *DataStore) SaveMail() {
       }
     }
   }
+}
+
+func (ds *DataStore) StatMails(username string) (nr int, size int) {
+  messages, err := ds.Storage.(*MongoDB).Stat(username)
+  if err != nil {
+    return 0, 0
+  }
+
+  var sum = 0
+  // count how many letters there are in all the headers and messages
+  for _, m := range *messages {
+    for _, c := range m.Content.Headers {
+      for _, h := range c {
+        sum = sum + len(h)
+      }
+    }
+    sum = sum + len(m.Content.Body)
+  }
+  
+  // return the count and the size in octets (bytes)
+  return len(*messages), sum*8
+}
+
+func (ds *DataStore) CheckUserExists(email string) bool {
+  user, err := ds.Storage.(*MongoDB).IsUserExists(email)
+  if err != nil {
+    return false
+  }
+  if user != nil {
+    return true
+  }
+
+  return false
+}
+
+func (ds *DataStore) LoginUser(email string, password string) bool {
+  user, err := ds.Storage.(*MongoDB).Login(email, password)
+  if err != nil {
+    return false
+  }
+  if user != nil {
+    return true
+  }
+
+  return false
 }
 
 // Check if host address is in greylist
@@ -130,28 +174,4 @@ func (ds *DataStore) SaveSpamIP(ip string, email string) {
   if _, err := ds.Storage.(*MongoDB).StoreSpamIp(s); err != nil {
     log.LogError("Error inserting Spam IPAddress: %s", err)
   }
-}
-
-func (ds *DataStore) CheckUserExists(email string) bool {
-	user, err := ds.Storage.(*MongoDB).IsUserExists(email)
-	if err != nil {
-		return false
-	}
-	if user != nil {
-		return true
-	}
-
-  return false
-}
-
-func (ds *DataStore) LoginUser(email string, password string) bool {
-	user, err := ds.Storage.(*MongoDB).Login(email, password)
-	if err != nil {
-		return false
-	}
-	if user != nil {
-		return true
-	}
-
-  return false
 }

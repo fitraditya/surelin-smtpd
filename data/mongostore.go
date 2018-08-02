@@ -204,19 +204,9 @@ func (mongo *MongoDB) IsUserExists(email string) (*User, error) {
 	return u, nil
 }
 
-func (mongo *MongoDB) List() (*Messages, error) {
+func (mongo *MongoDB) Stat(username string) (*Messages, error) {
 	messages := &Messages{}
-	err := mongo.Messages.Find(bson.M{}).Sort("-_id").Skip(start).Limit(limit).Select(bson.M{
-		"id":          1,
-		"from":        1,
-		"to":          1,
-		"attachments": 1,
-		"created":     1,
-		"ip":          1,
-		"subject":     1,
-		"starred":     1,
-		"unread":      1,
-	}).All(messages)
+	err := mongo.Messages.Find(nil).Select(bson.M{"to": bson.M{"$elemMatch": bson.M{"mailbox": username}}}).All(messages)
 	if err != nil {
 		log.LogError("Error loading messages: %s", err)
 		return nil, err

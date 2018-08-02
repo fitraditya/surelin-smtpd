@@ -47,13 +47,13 @@ type SmtpConfig struct {
 }
 
 type Pop3Config struct {
-	Ip4address      net.IP
-	Ip4port         int
-	Domain          string
-	MaxIdleSeconds  int
+  Ip4address      net.IP
+  Ip4port         int
+  Domain          string
+  MaxIdleSeconds  int
   MaxClients      int
   Debug           bool
-	DebugPath       string
+  DebugPath       string
 }
 
 type WebConfig struct {

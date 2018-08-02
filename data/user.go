@@ -13,28 +13,6 @@ import (
 )
 
 type User struct {
-<<<<<<< HEAD
-	Id            bson.ObjectId `bson:"_id"`
-	Firstname     string
-	Lastname      string
-	Email         string
-	Username      string
-	Password      string
-	Avatar        string
-	Website       string
-	Location      string
-	Tagline       string
-	Bio           string
-	JoinedAt      time.Time
-	IsSuperuser   bool
-	IsActive      bool
-	ValidateCode  string
-	ResetCode     string
-	LastLoginTime time.Time
-	LastLoginIp   string
-	LoginCount    int64
-  Messages      []Message
-=======
   Id            bson.ObjectId `bson:"_id"`
   Firstname     string
   Lastname      string
@@ -54,7 +32,6 @@ type User struct {
   LastLoginTime time.Time
   LastLoginIp   string
   LoginCount    int64
->>>>>>> 6bacfb8998381ef7903dc8af678139dbbe117a8b
 }
 
 type LoginForm struct {

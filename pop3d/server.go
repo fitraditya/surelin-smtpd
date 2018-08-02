@@ -252,7 +252,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
 
     return false
   } else if cmd == "STAT" && c.state == STATE_TRANSACTION {
-    nr_messages, size_messages := c.server.Store.StateMessage(c.tmp_client)
+    nr_messages, size_messages := c.server.Store.StatMails(c.tmp_client)
     c.Write("+OK " + strconv.Itoa(nr_messages) + " " + strconv.Itoa(size_messages))
     c.logTrace(">+OK " + strconv.Itoa(nr_messages) + " " + strconv.Itoa(size_messages))
   } else if cmd == "LIST" && c.state == STATE_TRANSACTION {
