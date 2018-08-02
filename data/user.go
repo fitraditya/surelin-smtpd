@@ -32,6 +32,7 @@ type User struct {
 	LastLoginTime time.Time
 	LastLoginIp   string
 	LoginCount    int64
+  Messages      []Message
 }
 
 type LoginForm struct {
@@ -100,3 +101,4 @@ func Validate_Password(hashed string, input_password string) bool {
 func (u *User) SetPassword(password string) {
 	u.Password = Encrypt_Password(password, nil)
 }
+

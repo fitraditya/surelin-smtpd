@@ -7,7 +7,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	golog "log"
+  "log"
 	"os"
 	"os/signal"
 	"runtime"
@@ -18,6 +18,7 @@ import (
 	"github.com/fitraditya/surelin-smtpd/data"
 	"github.com/fitraditya/surelin-smtpd/log"
 	"github.com/fitraditya/surelin-smtpd/smtpd"
+	"github.com/fitraditya/surelin-smtpd/pop3d"
 	"github.com/fitraditya/surelin-smtpd/web"
 )
 
@@ -40,8 +41,7 @@ var (
 
 	// Server instances
 	smtpServer *smtpd.Server
-
-/*	pop3Server *pop3d.Server*/
+  pop3Server *pop3d.Server
 )
 
 func main() {

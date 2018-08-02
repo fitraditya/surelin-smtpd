@@ -192,3 +192,34 @@ func (mongo *MongoDB) StoreSpamIp(s SpamIP) (string, error) {
 	}
 	return s.Id.Hex(), nil
 }
+
+func (mongo *MongoDB) IsUserExists(email string) (*User, error) {
+	u := &User{}
+	err := mongo.Users.Find(bson.M{"email": email}).One(&u)
+	if err != nil {
+		log.LogError("Error finding user: %v", err)
+		return nil, err
+	}
+
+	return u, nil
+}
+
+func (mongo *MongoDB) List() (*Messages, error) {
+	messages := &Messages{}
+	err := mongo.Messages.Find(bson.M{}).Sort("-_id").Skip(start).Limit(limit).Select(bson.M{
+		"id":          1,
+		"from":        1,
+		"to":          1,
+		"attachments": 1,
+		"created":     1,
+		"ip":          1,
+		"subject":     1,
+		"starred":     1,
+		"unread":      1,
+	}).All(messages)
+	if err != nil {
+		log.LogError("Error loading messages: %s", err)
+		return nil, err
+	}
+	return messages, nil
+}

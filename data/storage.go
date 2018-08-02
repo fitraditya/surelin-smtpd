@@ -131,3 +131,27 @@ func (ds *DataStore) SaveSpamIP(ip string, email string) {
 		log.LogError("Error inserting Spam IPAddress: %s", err)
 	}
 }
+
+func (ds *DataStore) CheckUserExists(email string) bool {
+	user, err := ds.Storage.(*MongoDB).IsUserExists(email)
+	if err != nil {
+		return false
+	}
+	if user != nil {
+		return true
+	}
+
+  return false
+}
+
+func (ds *DataStore) LoginUser(email string, password string) bool {
+	user, err := ds.Storage.(*MongoDB).Login(email, password)
+	if err != nil {
+		return false
+	}
+	if user != nil {
+		return true
+	}
+
+  return false
+}
