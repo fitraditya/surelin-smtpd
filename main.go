@@ -13,6 +13,7 @@ import (
   "runtime"
   "syscall"
   "time"
+  "sync"
 
   "github.com/fitraditya/surelin-smtpd/config"
   "github.com/fitraditya/surelin-smtpd/data"
@@ -40,8 +41,11 @@ var (
   logf *os.File
 
   // Server instances
+  ds *data.DataStore
   smtpServer *smtpd.Server
   pop3Server *pop3d.Server
+
+  wg sync.WaitGroup
 )
 
 func main() {
@@ -113,22 +117,34 @@ func main() {
   }
 
   // Grab our datastore
-  ds := data.NewDataStore()
+  ds = data.NewDataStore()
+  ds.StorageConnect()
 
   // Start HTTP server
   web.Initialize(config.GetWebConfig(), ds)
   go web.Start()
 
-  // Startup SMTP server, block until it exits
-  smtpServer = smtpd.NewSmtpServer(config.GetSmtpConfig(), ds)
-  smtpServer.Start()
+  // Startup SMTP server
+  wg.Add(1)
+  go runSmtpd()
 
-  // Startup POP3 server, block until it exits
-  pop3Server = pop3d.NewPop3Server(config.GetPop3Config(), ds)
-  pop3Server.Start()
+  // Startup POP3 server
+  wg.Add(1)
+  go runPop3d()
 
   // Wait for active connections to finish
+  wg.Wait()
+}
+
+func runSmtpd() {
+  smtpServer = smtpd.NewSmtpServer(config.GetSmtpConfig(), ds)
+  smtpServer.Start()
   smtpServer.Drain()
+}
+
+func runPop3d() {
+  pop3Server = pop3d.NewPop3Server(config.GetPop3Config(), ds)
+  pop3Server.Start()
   pop3Server.Drain()
 }
 

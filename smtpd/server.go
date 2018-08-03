@@ -184,7 +184,7 @@ func (s *Server) Start() {
   }
 
   //Connect database
-  s.Store.StorageConnect()
+  //s.Store.StorageConnect()
 
   var tempDelay time.Duration
   var clientId int64
@@ -233,6 +233,8 @@ func (s *Server) Start() {
       })
     }
   }
+  
+  //s.Drain()
 }
 
 // Stop requests the SMTP server closes it's listener
