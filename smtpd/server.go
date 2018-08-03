@@ -1,10 +1,3 @@
-/*
-Benchmarking:
-http://www.jrh.org/smtp/index.html
-Test 500 clients:
-$ time go-smtp-source -c -l 1000 -t test@localhost -s 500 -m 5000 localhost:25000
-*/
-
 package smtpd
 
 import (
@@ -73,7 +66,7 @@ type Server struct {
   HostGreyList    bool
   FromGreyList    bool
   RcptGreyList    bool
-  sem             chan int // currently active clients
+  sem             chan int
   SpamRegex       string
 }
 
@@ -106,14 +99,14 @@ func NewSmtpServer(cfg config.SmtpConfig, ds *data.DataStore) *Server {
   var allowedHosts = make(map[string]bool, 15)
   var trustedHosts = make(map[string]bool, 15)
 
-  // map the allow hosts for easy lookup
+  // Map allowed hosts for easy lookup
   if arr := strings.Split(cfg.AllowedHosts, ","); len(arr) > 0 {
     for i := 0; i < len(arr); i++ {
       allowedHosts[strings.Trim(arr[i], " ")] = true
     }
   }
 
-  // map the allow hosts for easy lookup
+  // Map trusted hosts for easy lookup
   if arr := strings.Split(cfg.TrustedHosts, ","); len(arr) > 0 {
     for i := 0; i < len(arr); i++ {
       trustedHosts[net.ParseIP(arr[i]).String()] = true
@@ -159,11 +152,11 @@ func (s *Server) Start() {
       ClientAuth:   tls.VerifyClientCertIfGiven,
       ServerName:   cfg.Domain,
     }
-    //s.TLSConfig  .Rand = rand.Reader
   }
 
   defer s.Stop()
   addr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("%v:%v", cfg.Ip4address, cfg.Ip4port))
+
   if err != nil {
     log.LogError("Failed to build tcp4 address: %v", err)
     // TODO More graceful early-shutdown procedure
@@ -175,6 +168,7 @@ func (s *Server) Start() {
   // Start listening for SMTP connections
   log.LogInfo("SMTP listening on TCP4 %v", addr)
   s.listener, err = net.ListenTCP("tcp4", addr)
+
   if err != nil {
     log.LogError("SMTP failed to start tcp4 listener: %v", err)
     // TODO More graceful early-shutdown procedure
@@ -182,9 +176,6 @@ func (s *Server) Start() {
     s.Stop()
     return
   }
-
-  //Connect database
-  //s.Store.StorageConnect()
 
   var tempDelay time.Duration
   var clientId int64
@@ -199,9 +190,11 @@ func (s *Server) Start() {
         } else {
           tempDelay *= 2
         }
+
         if max := 1 * time.Second; tempDelay > max {
           tempDelay = max
         }
+
         log.LogError("SMTP accept error: %v; retrying in %v", err, tempDelay)
         time.Sleep(tempDelay)
         continue
@@ -210,6 +203,7 @@ func (s *Server) Start() {
           log.LogTrace("SMTP listener shutting down on request")
           return
         }
+
         // TODO Implement a max error counter before shutdown?
         // or maybe attempt to restart smtpd
         panic(err)
@@ -219,8 +213,7 @@ func (s *Server) Start() {
       s.waitgroup.Add(1)
       log.LogInfo("There are now %s serving goroutines", strconv.Itoa(runtime.NumGoroutine()))
       host, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
-
-      s.sem <- 1 // Wait for active queue to drain.
+      s.sem <- 1
       go s.handleClient(&Client{
         state:      1,
         server:     s,
@@ -233,8 +226,6 @@ func (s *Server) Start() {
       })
     }
   }
-  
-  //s.Drain()
 }
 
 // Stop requests the SMTP server closes it's listener
@@ -254,7 +245,7 @@ func (s *Server) closeClient(c *Client) {
   c.bufout.Flush()
   time.Sleep(200 * time.Millisecond)
   c.conn.Close()
-  <-s.sem // Done; enable next client to run.
+  <-s.sem
 }
 
 func (s *Server) killClient(c *Client) {
@@ -271,7 +262,7 @@ func (s *Server) handleClient(c *Client) {
 
   c.greet()
 
-  // check if client on trusted hosts
+  // Check if client is on trusted hosts
   if s.trustedHosts[net.ParseIP(c.remoteHost).String()] {
     c.logInfo("Remote Client is Trusted: <%s>", c.remoteHost)
     c.trusted = true
@@ -286,6 +277,7 @@ func (s *Server) handleClient(c *Client) {
     }
 
     line, err := c.readLine()
+
     if err == nil {
       if cmd, arg, ok := c.parseCmd(line); ok {
         c.handle(cmd, arg, line)
@@ -296,8 +288,10 @@ func (s *Server) handleClient(c *Client) {
         c.logWarn("Got EOF while in state %v", c.state)
         break
       }
-      // not an EOF
+
+      // Not an EOF
       c.logWarn("Connection error: %v", err)
+
       if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
         c.Write("221", "Idle timeout, bye bye")
         break
@@ -378,6 +372,7 @@ func (c *Client) handle(cmd string, arg string, line string) {
     c.handleXCLIENT(cmd, arg, line)
   default:
     c.errors++
+
     if c.errors > 3 {
       c.Write("500", "Too many unrecognized commands")
       c.server.killClient(c)
@@ -390,6 +385,7 @@ func (c *Client) greetHandler(cmd string, arg string) {
   switch cmd {
   case "HELO":
     domain, err := parseHelloArgument(arg)
+
     if err != nil {
       c.Write("501", "Domain/address argument required for HELO")
       return
@@ -399,17 +395,19 @@ func (c *Client) greetHandler(cmd string, arg string) {
     c.state = 1
   case "EHLO":
     domain, err := parseHelloArgument(arg)
+
     if err != nil {
       c.Write("501", "Domain/address argument required for EHLO")
       return
     }
 
     if c.server.TLSConfig != nil && !c.tls_on {
-      c.Write("250", "Hello "+domain+"["+c.remoteHost+"]", "PIPELINING", "8BITMIME", "STARTTLS", "AUTH EXTERNAL CRAM-MD5 LOGIN PLAIN", fmt.Sprintf("SIZE %v", c.server.maxMessageBytes))
-      //c.Write("250", "Hello "+domain+"["+c.remoteHost+"]", "8BITMIME", fmt.Sprintf("SIZE %v", c.server.maxMessageBytes), "HELP")
+      c.Write("250", "Hello " + domain + "[" + c.remoteHost + "]", "PIPELINING", "8BITMIME", "STARTTLS", "AUTH EXTERNAL CRAM-MD5 LOGIN PLAIN", fmt.Sprintf("SIZE %v", c.server.maxMessageBytes))
+      //c.Write("250", "Hello " + domain + "[" + c.remoteHost + "]", "8BITMIME", fmt.Sprintf("SIZE %v", c.server.maxMessageBytes), "HELP")
     } else {
-      c.Write("250", "Hello "+domain+"["+c.remoteHost+"]", "PIPELINING", "8BITMIME", "AUTH EXTERNAL CRAM-MD5 LOGIN PLAIN", fmt.Sprintf("SIZE %v", c.server.maxMessageBytes))
+      c.Write("250", "Hello " + domain + "[" + c.remoteHost + "]", "PIPELINING", "8BITMIME", "AUTH EXTERNAL CRAM-MD5 LOGIN PLAIN", fmt.Sprintf("SIZE %v", c.server.maxMessageBytes))
     }
+
     c.helo = domain
     c.state = 1
   default:
@@ -429,6 +427,7 @@ func (c *Client) mailHandler(cmd string, arg string) {
     // (?i) makes the regex case insensitive, (?:) is non-grouping sub-match
     re := regexp.MustCompile("(?i)^FROM:\\s*<((?:\\\\>|[^>])+|\"[^\"]+\"@[^>]+)>( [\\w= ]+)?$")
     m := re.FindStringSubmatch(arg)
+
     if m == nil {
       c.Write("501", "Was expecting MAIL arg syntax of FROM:<address>")
       c.logWarn("Bad MAIL argument: %q", arg)
@@ -437,6 +436,7 @@ func (c *Client) mailHandler(cmd string, arg string) {
 
     from := m[1]
     mailbox, domain, err := ParseEmailAddress(from)
+
     if err != nil {
       c.Write("501", "Bad sender address syntax")
       c.logWarn("Bad address as MAIL arg: %q, %s", from, err)
@@ -453,18 +453,22 @@ func (c *Client) mailHandler(cmd string, arg string) {
     // read the DATA as bytes, so it does not effect our processing.
     if m[2] != "" {
       args, ok := c.parseArgs(m[2])
+
       if !ok {
         c.Write("501", "Unable to parse MAIL ESMTP parameters")
         c.logWarn("Bad MAIL argument: %q", arg)
         return
       }
+
       if args["SIZE"] != "" {
         size, err := strconv.ParseInt(args["SIZE"], 10, 32)
+
         if err != nil {
           c.Write("501", "Unable to parse SIZE as an integer")
           c.logWarn("Unable to parse SIZE %q as an integer", args["SIZE"])
           return
         }
+
         if int(size) > c.server.maxMessageBytes {
           c.Write("552", "Max message size exceeded")
           c.logWarn("Client wanted to send oversized message: %v", args["SIZE"])
@@ -472,6 +476,7 @@ func (c *Client) mailHandler(cmd string, arg string) {
         }
       }
     }
+
     c.from = from
     c.logInfo("Mail from: %v", from)
     c.Write("250", fmt.Sprintf("Roger, accepting mail from <%v>", from))
@@ -498,13 +503,14 @@ func (c *Client) rcptHandler(cmd string, arg string) {
     // This trim is probably too forgiving
     recip := strings.Trim(arg[3:], "<> ")
     mailbox, host, err := ParseEmailAddress(recip)
+
     if err != nil {
       c.Write("501", "Bad recipient address syntax")
       c.logWarn("Bad address as RCPT arg: %q, %s", recip, err)
       return
     }
 
-    // check if on allowed hosts if client ip not trusted
+    // Check if on allowed hosts if client ip not trusted
     if !c.server.allowedHosts[host] && !c.trusted {
       c.logWarn("Domain not allowed: <%s>", host)
       c.Write("510", "Recipient address not allowed")
@@ -548,13 +554,14 @@ func (c *Client) authHandler(cmd string, arg string) {
     parts := strings.Fields(arg)
     mechanism := strings.ToUpper(parts[0])
 
-    /*  scanner := bufio.NewScanner(c.bufin)
-      line := scanner.Text()
-      c.logTrace("Read Line %s", line)
-      if !scanner.Scan() {
-        return
-      }
-    */
+    /*scanner := bufio.NewScanner(c.bufin)
+    line := scanner.Text()
+    c.logTrace("Read Line %s", line)
+
+    if !scanner.Scan() {
+      return
+    }*/
+
     switch mechanism {
     case "LOGIN":
       c.Write("334", "VXNlcm5hbWU6")
@@ -593,10 +600,10 @@ func (c *Client) tlsHandler() {
   // upgrade to TLS
   var tlsConn *tls.Conn
   tlsConn = tls.Server(c.conn, c.server.TLSConfig)
-  err := tlsConn.Handshake() // not necessary to call here, but might as well
+  err := tlsConn.Handshake()
 
   if err == nil {
-    //c.conn   = net.Conn(tlsConn)
+    //c.conn = net.Conn(tlsConn)
     c.conn = tlsConn
     c.bufin = bufio.NewReader(c.conn)
     c.bufout = bufio.NewWriter(c.conn)
@@ -649,18 +656,16 @@ func (c *Client) handleXCLIENT(cmd string, arg string, line string) {
   }
 
   var (
-    newHeloName        = ""
-    newAddr     net.IP = nil
+    newHeloName     = ""
+    newAddr net.IP  = nil
   )
 
   // Important set the trusted to false
   c.trusted = false
-
   c.logTrace("Handle XCLIENT args: %q", arg)
   line1 := strings.Fields(arg)
 
   for _, item := range line1[0:] {
-
     parts := strings.Split(item, "=")
     c.logTrace("Handle XCLIENT parts: %q", parts)
 
@@ -684,6 +689,7 @@ func (c *Client) handleXCLIENT(cmd string, arg string, line string) {
       continue
     case "PORT":
       _, err := strconv.ParseUint(value, 10, 16)
+
       if err != nil {
         c.Write("502", "Couldn't decode the command.")
         return
@@ -693,11 +699,11 @@ func (c *Client) handleXCLIENT(cmd string, arg string, line string) {
       //newUsername = value
       continue
     case "PROTO":
-      /*      if value == "SMTP" {
-              newProto = SMTP
-            } else if value == "ESMTP" {
-              newProto = ESMTP
-            }*/
+      /*if value == "SMTP" {
+        newProto = SMTP
+      } else if value == "ESMTP" {
+        newProto = ESMTP
+      }*/
       continue
     default:
       c.Write("502", "Couldn't decode the command.")
@@ -711,6 +717,7 @@ func (c *Client) handleXCLIENT(cmd string, arg string, line string) {
 
   if newAddr != nil {
     c.remoteHost = newAddr.String()
+
     // check if client on trusted hosts
     if c.server.trustedHosts[c.remoteHost] {
       c.logTrace("Remote Client is Trusted: <%s>", c.remoteHost)
@@ -746,6 +753,7 @@ func (c *Client) processData() {
       if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
         c.Write("221", "Idle timeout, bye bye")
       }
+
       c.logInfo("Error reading from socket: %s\n", err)
       break
     }
@@ -775,8 +783,8 @@ func (c *Client) processData() {
     c.logTrace("Got EOF, storing message and switching to MAIL state")
     msg = strings.TrimSuffix(msg, "\r\n.\r\n")
     c.data = msg
-
     r, _ := regexp.Compile(c.server.SpamRegex)
+
     if r.MatchString(msg) {
       c.logWarn("Spam Received from <%s> email: ip:<%s>\n", c.from, c.remoteHost)
       c.Write("250", "Ok")
@@ -784,7 +792,6 @@ func (c *Client) processData() {
       go c.server.Store.SaveSpamIP(c.remoteHost, c.from)
       c.reset()
       c.server.closeClient(c)
-
       return
     }
 
@@ -803,7 +810,7 @@ func (c *Client) processData() {
       c.server.Store.SaveMailChan <- mc
 
       select {
-      // wait for the save to complete
+      // Wait for the save to complete
       case status := <-mc.Notify:
         if status == 1 {
           c.Write("250", "Ok: queued as "+mc.Hash)
@@ -819,8 +826,7 @@ func (c *Client) processData() {
     } else {
       //Notify web socket with timestamp
       c.server.Store.NotifyMailChan <- time.Now().Unix()
-
-      // we dont store messages here, just deliver to hell
+      // We dont store messages here, just deliver to hell
       c.Write("250", "Mail accepted for delivery")
       c.logInfo("Message size %v bytes", len(msg))
     }
@@ -840,7 +846,7 @@ func (c *Client) enterState(state State) {
 }
 
 func (c *Client) greet() {
-  c.Write("220", fmt.Sprintf("%v Gleez SMTP # %s (%s) %s", c.server.domain, strconv.FormatInt(c.id, 10), strconv.Itoa(len(c.server.sem)), time.Now().Format(time.RFC1123Z)))
+  c.Write("220", fmt.Sprintf("%v Surelin SMTP # %s (%s) %s", c.server.domain, strconv.FormatInt(c.id, 10), strconv.Itoa(len(c.server.sem)), time.Now().Format(time.RFC1123Z)))
   c.state = 1
 }
 
@@ -857,19 +863,21 @@ func (c *Client) nextDeadline() time.Time {
 
 func (c *Client) Write(code string, text ...string) {
   c.conn.SetDeadline(c.nextDeadline())
+
   if len(text) == 1 {
     c.logTrace(">> Sent %d bytes: %s >>", len(text[0]), text[0])
     c.conn.Write([]byte(code + " " + text[0] + "\r\n"))
     c.bufout.Flush()
     return
   }
+
   for i := 0; i < len(text)-1; i++ {
     c.logTrace(">> Sent %d bytes: %s >>", len(text[i]), text[i])
     c.conn.Write([]byte(code + "-" + text[i] + "\r\n"))
   }
+
   c.logTrace(">> Sent %d bytes: %s >>", len(text[len(text)-1]), text[len(text)-1])
   c.conn.Write([]byte(code + " " + text[len(text)-1] + "\r\n"))
-
   c.bufout.Flush()
 }
 
@@ -879,25 +887,29 @@ func (c *Client) readByteLine(buf *bytes.Buffer) error {
   if err := c.conn.SetReadDeadline(c.nextDeadline()); err != nil {
     return err
   }
+
   for {
     line, err := c.bufin.ReadBytes('\r')
+
     if err != nil {
       return err
     }
+
     buf.Write(line)
     // Read the next byte looking for '\n'
     c, err := c.bufin.ReadByte()
+
     if err != nil {
       return err
     }
+
     buf.WriteByte(c)
+
     if c == '\n' {
       // We've reached the end of the line, return
       return nil
     }
-    // Else, keep looking
   }
-  // Should be unreachable
 }
 
 // Reads a line of input
@@ -907,9 +919,11 @@ func (c *Client) readLine() (line string, err error) {
   }
 
   line, err = c.bufin.ReadString('\n')
+
   if err != nil {
     return "", err
   }
+
   c.logTrace("<< %v <<", strings.TrimRight(line, "\r\n"))
   return line, nil
 }
@@ -917,6 +931,7 @@ func (c *Client) readLine() (line string, err error) {
 func (c *Client) parseCmd(line string) (cmd string, arg string, ok bool) {
   line = strings.TrimRight(line, "\r\n")
   l := len(line)
+
   switch {
   case strings.Index(line, "STARTTLS") == 0:
     return "STARTTLS", "", true
@@ -934,12 +949,14 @@ func (c *Client) parseCmd(line string) (cmd string, arg string, ok bool) {
     c.logWarn("Mangled command: %q", line)
     return "", "", false
   }
+
   // If we made it here, command is long enough to have args
   if line[4] != ' ' {
     // There wasn't a space after the command?
     c.logWarn("Mangled command: %q", line)
     return "", "", false
   }
+
   // I'm not sure if we should trim the args or not, but we will for now
   //return strings.ToUpper(line[0:4]), strings.Trim(line[5:], " "), true
   return strings.ToUpper(line[0:4]), strings.Trim(line[5:], " \n\r"), true
@@ -954,13 +971,16 @@ func (c *Client) parseArgs(arg string) (args map[string]string, ok bool) {
   args = make(map[string]string)
   re := regexp.MustCompile(" (\\w+)=(\\w+)")
   pm := re.FindAllStringSubmatch(arg, -1)
+
   if pm == nil {
     c.logWarn("Failed to parse arg string: %q")
     return nil, false
   }
+
   for _, m := range pm {
     args[strings.ToUpper(m[1])] = m[2]
   }
+
   c.logTrace("ESMTP params: %v", args)
   return args, true
 }
@@ -1000,12 +1020,15 @@ func (c *Client) logError(msg string, args ...interface{}) {
 
 func parseHelloArgument(arg string) (string, error) {
   domain := arg
+
   if idx := strings.IndexRune(arg, ' '); idx >= 0 {
     domain = arg[:idx]
   }
+
   if domain == "" {
     return "", fmt.Errorf("Invalid domain")
   }
+
   return domain, nil
 }
 

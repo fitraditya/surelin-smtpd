@@ -47,7 +47,7 @@ type Server struct {
   shutdown        bool
   Debug           bool
   DebugPath       string
-  sem             chan int // currently active clients
+  sem             chan int
 }
 
 type Client struct {
@@ -80,9 +80,9 @@ func NewPop3Server(cfg config.Pop3Config, ds *data.DataStore) *Server {
 // Main listener loop
 func (s *Server) Start() {
   cfg := config.GetPop3Config()
-
   defer s.Stop()
   addr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("%v:%v", cfg.Ip4address, cfg.Ip4port))
+
   if err != nil {
     log.LogError("Failed to build tcp4 address: %v", err)
     // TODO More graceful early-shutdown procedure
@@ -94,6 +94,7 @@ func (s *Server) Start() {
   // Start listening for POP3 connections
   log.LogInfo("POP3 listening on TCP4 %v", addr)
   s.listener, err = net.ListenTCP("tcp4", addr)
+
   if err != nil {
     log.LogError("POP3 failed to start tcp4 listener: %v", err)
     // TODO More graceful early-shutdown procedure
@@ -101,9 +102,6 @@ func (s *Server) Start() {
     s.Stop()
     return
   }
-
-  //Connect database
-  //s.Store.StorageConnect()
 
   var tempDelay time.Duration
   var clientId int64
@@ -118,9 +116,11 @@ func (s *Server) Start() {
         } else {
           tempDelay *= 2
         }
+
         if max := 1 * time.Second; tempDelay > max {
           tempDelay = max
         }
+
         log.LogError("POP3 accept error: %v; retrying in %v", err, tempDelay)
         time.Sleep(tempDelay)
         continue
@@ -129,6 +129,7 @@ func (s *Server) Start() {
           log.LogTrace("POP3 listener shutting down on request")
           return
         }
+
         // TODO Implement a max error counter before shutdown?
         // or maybe attempt to restart POP3d
         panic(err)
@@ -138,8 +139,7 @@ func (s *Server) Start() {
       s.waitgroup.Add(1)
       log.LogInfo("There are now %s serving goroutines", strconv.Itoa(runtime.NumGoroutine()))
       host, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
-
-      s.sem <- 1 // Wait for active queue to drain.
+      s.sem <- 1
       go s.handleClient(&Client{
         state:      1,
         server:     s,
@@ -152,8 +152,6 @@ func (s *Server) Start() {
       })
     }
   }
-  
-  //s.Drain()
 }
 
 // Stop requests the POP3 server closes it's listener
@@ -173,7 +171,7 @@ func (s *Server) closeClient(c *Client) {
   c.bufout.Flush()
   time.Sleep(200 * time.Millisecond)
   c.conn.Close()
-  <-s.sem // Done; enable next client to run.
+  <-s.sem
 }
 
 func (s *Server) killClient(c *Client) {
@@ -198,6 +196,7 @@ func (s *Server) handleClient(c *Client) {
     if err == nil {
       cmd, args := c.parseCmd(line)
       ret = c.handle(cmd, args, line)
+
       if ret {
         return
       }
@@ -207,8 +206,10 @@ func (s *Server) handleClient(c *Client) {
         c.logWarn("Got EOF while in state %v", c.state)
         return
       }
+
       // not an EOF
       c.logWarn("Connection error: %v", err)
+
       if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
         c.Write("Idle timeout, bye bye")
         return
@@ -233,6 +234,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
 
   if cmd == "USER" && c.state == STATE_UNAUTHORIZED {
     c.tmp_client, _ = c.parseArgs(args, 0)
+
     if c.server.Store.CheckUserExists(c.tmp_client) {
       c.Write("+OK")
       c.logTrace(">+OK")
@@ -244,6 +246,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     return false
   } else if cmd == "PASS" && c.state == STATE_UNAUTHORIZED {
     pass, _ := c.parseArgs(args, 0)
+
     if c.server.Store.LoginUser(c.tmp_client, pass) {
       c.Write("+OK User signed in")
       c.logTrace(">+OK User signed in")
@@ -267,9 +270,9 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     for _, val := range Message_head {
       c.Write(strconv.Itoa(val.Id) + " " + strconv.Itoa(val.Size))
     }
+
     // Ending
     c.Write(".")
-
     return false
   } else if cmd == "RETR" && c.state == STATE_TRANSACTION  {
     id, _ := c.parseArgs(args, 0)
@@ -278,21 +281,18 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     message, size := c.server.Store.GetMail(c.tmp_client, i)
     c.Write("+OK " + strconv.Itoa(size) + " octets")
     c.Write(message.Content.Body)
-
     return false
   } else if cmd == "TOP" && c.state == STATE_TRANSACTION {
     arg, _ := c.parseArgs(args, 0)
     nr, _ := strconv.Atoi(arg)
     headers := c.server.Store.TopMail(c.tmp_client, nr)
-
     c.Write("+OK Top message follows")
     c.Write(headers + "\r\n\r\n.")
-
     return false
   } else if cmd == "QUIT" {
     return true
   }
-  
+
   return false
 }
 
@@ -320,9 +320,11 @@ func (c *Client) readLine() (line string, err error) {
   }
 
   line, err = c.bufin.ReadString('\n')
+
   if err != nil {
     return "", err
   }
+
   c.logTrace("<< %v <<", strings.TrimRight(line, "\r\n"))
   return line, nil
 }
@@ -337,6 +339,7 @@ func (c *Client) parseArgs(args []string, nr int) (arg string, err error) {
   if nr < len(args) {
     return args[nr], nil
   }
+
   return "", errors.New("Out of range")
 }
 

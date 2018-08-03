@@ -1,7 +1,3 @@
-/*
-  This is the smtpd daemon launcher
-  ./smtpd -config=etc/smtpd.conf -logfile=smtpd.log &
-*/
 package main
 
 import (
@@ -34,7 +30,7 @@ var (
   logfile    = flag.String("logfile", "stderr", "Write out log into the specified file")
   configfile = flag.String("config", "/etc/smtpd.conf", "Path to the configuration file")
 
-  // startTime is used to calculate uptime of Smtpd
+  // startTime is used to calculate uptime of Surelin
   startTime = time.Now()
 
   // The file we send log output to, will be nil for stderr or stdout
@@ -59,13 +55,13 @@ func main() {
   }
 
   // Load & Parse config
-  /*  if flag.NArg() != 1 {
+  /*if flag.NArg() != 1 {
     flag.Usage()
     os.Exit(1)
   }*/
 
-  //err := config.LoadConfig(flag.Arg(0))
   err := config.LoadConfig(*configfile)
+
   if err != nil {
     fmt.Fprintf(os.Stderr, "Failed to parse config: %v\n", err)
     os.Exit(1)
@@ -87,31 +83,35 @@ func main() {
       golog.SetOutput(os.Stdout)
     } else {
       err := openLogFile()
+
       if err != nil {
         fmt.Fprintf(os.Stderr, "%v", err)
         os.Exit(1)
       }
+
       defer closeLogFile()
 
       // close std* streams
       os.Stdout.Close()
-      os.Stderr.Close() // Warning: this will hide panic() output
+      os.Stderr.Close()
       os.Stdin.Close()
       os.Stdout = logf
       os.Stderr = logf
     }
   }
 
-  log.LogInfo("Smtpd %v (%v) starting...", VERSION, BUILD_DATE)
+  log.LogInfo("Surelin %v (%v) starting...", VERSION, BUILD_DATE)
 
   // Write pidfile if requested
   // TODO: Probably supposed to remove pidfile during shutdown
   if *pidfile != "none" {
     pidf, err := os.Create(*pidfile)
+
     if err != nil {
       log.LogError("Failed to create %v: %v", *pidfile, err)
       os.Exit(1)
     }
+
     defer pidf.Close()
     fmt.Fprintf(pidf, "%v\n", os.Getpid())
   }
@@ -153,9 +153,11 @@ func openLogFile() error {
   // use specified log file
   var err error
   logf, err = os.OpenFile(*logfile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+
   if err != nil {
     return fmt.Errorf("Failed to create %v: %v\n", *logfile, err)
   }
+
   golog.SetOutput(logf)
   log.LogTrace("Opened new logfile")
   return nil
@@ -186,11 +188,13 @@ func signalProcessor(c <-chan os.Signal) {
       log.LogInfo("Received SIGTERM, shutting down")
       go timedExit()
       web.Stop()
+
       if smtpServer != nil {
         smtpServer.Stop()
       } else {
         log.LogError("smtpServer was nil during shutdown")
       }
+
       if pop3Server != nil {
         pop3Server.Stop()
       } else {
@@ -203,13 +207,13 @@ func signalProcessor(c <-chan os.Signal) {
 // timedExit is called as a goroutine during shutdown, it will force an exit after 15 seconds
 func timedExit() {
   time.Sleep(15 * time.Second)
-  log.LogError("Smtpd clean shutdown timed out, forcing exit")
+  log.LogError("Surelin clean shutdown timed out, forcing exit")
   os.Exit(0)
 }
 
 func init() {
   flag.Usage = func() {
-    fmt.Fprintln(os.Stderr, "Usage of smtpd [options]:")
+    fmt.Fprintln(os.Stderr, "Usage of Surelin [options]:")
     flag.PrintDefaults()
   }
 }
