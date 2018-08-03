@@ -236,11 +236,11 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     c.tmp_client, _ = c.parseArgs(args, 0)
 
     if c.server.Store.CheckUserExists(c.tmp_client) {
-      c.Write("+OK")
-      c.logTrace(">+OK")
+      c.Write("+OK name is a valid mailbox")
+      c.logTrace(">+OK name is a valid mailbox")
     } else {
-      c.Write("-ERR The user " + c.tmp_client + " doesn't belong here!")
-      c.logTrace(">-ERR The user " + c.tmp_client + " doesn't belong here!")
+      c.Write("-ERR never heard of mailbox name" + c.tmp_client)
+      c.logTrace(">-ERR never heard of mailbox name " + c.tmp_client)
     }
 
     return false
@@ -248,12 +248,12 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     pass, _ := c.parseArgs(args, 0)
 
     if c.server.Store.LoginUser(c.tmp_client, pass) {
-      c.Write("+OK User signed in")
-      c.logTrace(">+OK User signed in")
+      c.Write("+OK mailbox ready")
+      c.logTrace(">+OK mailbox ready")
       c.state = 2
     } else {
-      c.Write("-ERR Password incorrect!")
-      c.logTrace(">-ERR Password incorrect!")
+      c.Write("-ERR invalid password")
+      c.logTrace(">-ERR invalid password")
     }
 
     return false
@@ -277,7 +277,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
   } else if cmd == "RETR" && c.state == STATE_TRANSACTION  {
     id, _ := c.parseArgs(args, 0)
     i, _ := strconv.Atoi(id)
-    // Retreive one message but don't delete it from the server..
+    // Retreive one message but don't delete it from the server
     message, size := c.server.Store.GetMail(c.tmp_client, i)
     c.Write("+OK " + strconv.Itoa(size) + " octets")
     c.Write(message.Content.Body)
@@ -286,7 +286,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     arg, _ := c.parseArgs(args, 0)
     nr, _ := strconv.Atoi(arg)
     headers := c.server.Store.TopMail(c.tmp_client, nr)
-    c.Write("+OK Top message follows")
+    c.Write("+OK top message follows")
     c.Write(headers + "\r\n\r\n.")
     return false
   } else if cmd == "AUTH" && c.state == STATE_TRANSACTION {
