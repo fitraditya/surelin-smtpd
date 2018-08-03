@@ -289,8 +289,11 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     c.Write("+OK top message follows")
     c.Write(headers + "\r\n\r\n.")
     return false
-  } else if cmd == "AUTH" {
-    c.Write("-ERR Unrecognized authentication type")
+  } else if cmd == "AUTH" || {
+    c.Write("-ERR unrecognized authentication type")
+    return false
+  } else if cmd == "CAPA" || cmd == "UIDL" {
+    c.Write("-ERR not implemented")
     return false
   } else if cmd == "QUIT" {
     return true
