@@ -18,20 +18,18 @@ event loop callbacks, etc. Golang solves the C10K problem in a very interesting 
 
 Once compiled, Surelin-SMTPD does not have an external dependencies (HTTP and SMTP are all built in).
 
-Features
+Protocol Supported
 =========================================================
 
-* ESMTP server implementing RFC5321
-* Support for SMTP AUTH (RFC4954) and PIPELINING (RFC2920)
-* Multipart MIME support
-* UTF8 support for subject and message
-* Web interface to view messages (plain text, HTML or source)
-* Html sanitizer for html mail in web interface
-* Real-time updates using websocket
-* Download individual attachments
-* MongoDB storage for message persistence
-* Lightweight and portable
+* ESMTP (RFC5321)
+* SMTP AUTH (RFC4954) and PIPELINING (RFC2920)
+* POP3 (RFC1939)
+
+Features
+=========================================================
 * No installation required
+* Lightweight and portable
+* MongoDB storage for message persistence
 
 Building from Source
 =========================================================
@@ -45,7 +43,7 @@ Grab the Smtpd source code and compile the daemon:
 Edit etc/smtpd.conf and tailor to your environment. It should work on most
 Unix and OS X machines as is. Launch the daemon:
 
-    $GOPATH/bin/smtpd -config=$GOPATH/src/github.com/fitraditya/surelin-smtpd/etc/smtpd.conf
+    $GOPATH/bin/surelin-smtpd -config=$GOPATH/src/github.com/fitraditya/surelin-smtpd/etc/smtpd.conf
 
 By default the SMTP server will be listening on localhost port 25000 and
 the web interface will be available at [localhost:10025](http://localhost:10025/).
