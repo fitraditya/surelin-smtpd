@@ -239,7 +239,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
       c.Write("+OK name is a valid mailbox")
       c.logTrace(">+OK name is a valid mailbox")
     } else {
-      c.Write("-ERR never heard of mailbox name" + c.tmp_client)
+      c.Write("-ERR never heard of mailbox name " + c.tmp_client)
       c.logTrace(">-ERR never heard of mailbox name " + c.tmp_client)
     }
 

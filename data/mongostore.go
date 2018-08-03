@@ -2,6 +2,7 @@ package data
 
 import (
   "fmt"
+  "strings"
 
   "github.com/fitraditya/surelin-smtpd/config"
   "github.com/fitraditya/surelin-smtpd/log"
@@ -132,16 +133,16 @@ func (mongo *MongoDB) LoadAttachment(id string) (*Message, error) {
 }
 
 //Login validates and returns a user object if they exist in the database.
-func (mongo *MongoDB) Login(username, password string) (*User, error) {
+func (mongo *MongoDB) Login(email, password string) (*User, error) {
   u := &User{}
-  err := mongo.Users.Find(bson.M{"username": username}).One(&u)
+  err := mongo.Users.Find(bson.M{"email": email}).One(&u)
   if err != nil {
     log.LogError("Login error: %v", err)
     return nil, err
   }
 
   if ok := Validate_Password(u.Password, password); !ok {
-    log.LogError("Invalid Password: %s", u.Username)
+    log.LogError("Invalid Password: %s", u.Email)
     return nil, fmt.Errorf("Invalid Password!")
   }
 
@@ -193,9 +194,9 @@ func (mongo *MongoDB) StoreSpamIp(s SpamIP) (string, error) {
   return s.Id.Hex(), nil
 }
 
-func (mongo *MongoDB) IsUserExists(username string) (*User, error) {
+func (mongo *MongoDB) IsUserExists(email string) (*User, error) {
 	u := &User{}
-	err := mongo.Users.Find(bson.M{"username": username}).One(&u)
+	err := mongo.Users.Find(bson.M{"email": email}).One(&u)
 	if err != nil {
 		log.LogError("Error finding user: %v", err)
 		return nil, err
@@ -204,9 +205,10 @@ func (mongo *MongoDB) IsUserExists(username string) (*User, error) {
 	return u, nil
 }
 
-func (mongo *MongoDB) Fetch(username string) (*Messages, error) {
+func (mongo *MongoDB) Fetch(email string) (*Messages, error) {
+  s := strings.Split(email, "@")
 	messages := &Messages{}
-	err := mongo.Messages.Find(bson.M{"to": bson.M{"$elemMatch": bson.M{"mailbox": username}}}).All(messages)
+	err := mongo.Messages.Find(bson.M{"to": bson.M{"$elemMatch": bson.M{"mailbox": s[0], "domain": s[1]}}}).All(messages)
 	if err != nil {
 		log.LogError("Error loading messages: %s", err)
 		return nil, err
@@ -214,9 +216,10 @@ func (mongo *MongoDB) Fetch(username string) (*Messages, error) {
 	return messages, nil
 }
 
-func (mongo *MongoDB) FetchMailById(username string, id int) (*Messages, error) {
+func (mongo *MongoDB) FetchMailById(email string, id int) (*Messages, error) {
+  s := strings.Split(email, "@")
 	messages := &Messages{}
-	err := mongo.Messages.Find(bson.M{"to": bson.M{"$elemMatch": bson.M{"mailbox": username}}}).All(messages)
+	err := mongo.Messages.Find(bson.M{"to": bson.M{"$elemMatch": bson.M{"mailbox": s[0], "domain": s[1]}}}).All(messages)
 	if err != nil {
 		log.LogError("Error loading messages: %s", err)
 		return nil, err
