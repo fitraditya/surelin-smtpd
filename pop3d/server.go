@@ -289,7 +289,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     c.Write("+OK top message follows")
     c.Write(headers + "\r\n\r\n.")
     return false
-  } else if cmd == "AUTH" && c.state == STATE_TRANSACTION {
+  } else if cmd == "AUTH" {
     c.Write("-ERR Unrecognized authentication type")
     return false
   } else if cmd == "QUIT" {
