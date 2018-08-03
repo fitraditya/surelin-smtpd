@@ -193,9 +193,9 @@ func (mongo *MongoDB) StoreSpamIp(s SpamIP) (string, error) {
   return s.Id.Hex(), nil
 }
 
-func (mongo *MongoDB) IsUserExists(email string) (*User, error) {
+func (mongo *MongoDB) IsUserExists(username string) (*User, error) {
 	u := &User{}
-	err := mongo.Users.Find(bson.M{"email": email}).One(&u)
+	err := mongo.Users.Find(bson.M{"username": username}).One(&u)
 	if err != nil {
 		log.LogError("Error finding user: %v", err)
 		return nil, err
@@ -206,7 +206,17 @@ func (mongo *MongoDB) IsUserExists(email string) (*User, error) {
 
 func (mongo *MongoDB) Fetch(username string) (*Messages, error) {
 	messages := &Messages{}
-	err := mongo.Messages.Find(nil).Select(bson.M{"to": bson.M{"$elemMatch": bson.M{"mailbox": username}}}).All(messages)
+	err := mongo.Messages.Find(bson.M{"to": bson.M{"$elemMatch": bson.M{"mailbox": username}}}).All(messages)
+	if err != nil {
+		log.LogError("Error loading messages: %s", err)
+		return nil, err
+	}
+	return messages, nil
+}
+
+func (mongo *MongoDB) FetchMailById(username string, id int) (*Messages, error) {
+	messages := &Messages{}
+	err := mongo.Messages.Find(bson.M{"to": bson.M{"$elemMatch": bson.M{"mailbox": username}}}).All(messages)
 	if err != nil {
 		log.LogError("Error loading messages: %s", err)
 		return nil, err

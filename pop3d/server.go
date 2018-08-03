@@ -72,6 +72,7 @@ func NewPop3Server(cfg config.Pop3Config, ds *data.DataStore) *Server {
     Store:           ds,
     domain:          cfg.Domain,
     maxIdleSeconds:  cfg.MaxIdleSeconds,
+    waitgroup:       new(sync.WaitGroup),
     sem:             maxClients,
   }
 }
@@ -102,7 +103,7 @@ func (s *Server) Start() {
   }
 
   //Connect database
-  s.Store.StorageConnect()
+  //s.Store.StorageConnect()
 
   var tempDelay time.Duration
   var clientId int64
@@ -151,6 +152,8 @@ func (s *Server) Start() {
       })
     }
   }
+  
+  //s.Drain()
 }
 
 // Stop requests the POP3 server closes it's listener
@@ -268,12 +271,13 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     c.Write(".")
 
     return false
-  } else if cmd == "UIDL" && c.state == STATE_TRANSACTION  {
+  } else if cmd == "RETR" && c.state == STATE_TRANSACTION  {
+    id, _ := c.parseArgs(args, 0)
+    i, _ := strconv.Atoi(id)
     // Retreive one message but don't delete it from the server..
-    //message, size, _ := getMessage(tmp_user, 1)
-    //fmt.Fprintf(conn, "+OK " + strconv.Itoa(size) + " octets" + eol)
-    //fmt.Fprintf(conn, message.message + eol + "." + eol)
-    c.Write("-ERR Command not implemented")
+    message, size := c.server.Store.GetMail(c.tmp_client, i)
+    c.Write("+OK " + strconv.Itoa(size) + " octets")
+    c.Write(message.Content.Body)
 
     return false
   } else if cmd == "TOP" && c.state == STATE_TRANSACTION {
@@ -289,7 +293,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     return true
   }
   
-  return true
+  return false
 }
 
 func (c *Client) greet() {
@@ -326,7 +330,7 @@ func (c *Client) readLine() (line string, err error) {
 func (c *Client) parseCmd(line string) (cmd string, arg []string) {
   line = strings.Trim(line, "\r \n")
   cm := strings.Split(line, " ")
-  return cm[0], cm[1:]
+  return strings.ToUpper((cm[0])[0:4]), cm[1:]
 }
 
 func (c *Client) parseArgs(args []string, nr int) (arg string, err error) {

@@ -120,11 +120,10 @@ func (ds *DataStore) ListMails(username string) (nr int, size int, head []Messag
   }
 
   var sum = 0
-  var sz = 0
   var heads []MessageHead
   // count how many letters there are in all the headers and messages
   for i, m := range *messages {
-    size = 0
+    sz := 0
     for _, c := range m.Content.Headers {
       for _, h := range c {
         sz = sz + len(h)
@@ -145,6 +144,27 @@ func (ds *DataStore) ListMails(username string) (nr int, size int, head []Messag
   return len(heads), sum*8, heads
 }
 
+func (ds *DataStore) GetMail(username string, id int) (message Message, size int) {
+  messages, err := ds.Storage.(*MongoDB).FetchMailById(username, id)
+  if err != nil {
+    return Message{}, 0
+  }
+
+  // Get the specified message
+	i := id-1
+
+  m := (*messages)[i]
+  sz := 0
+  for _, c := range m.Content.Headers {
+    for _, h := range c {
+      sz = sz + len(h)
+    }
+  }
+
+	sz = sz + len(m.Content.Body)*8
+  return m, sz
+}
+
 func (ds *DataStore) TopMail(username string, id int) (headers string) {
   messages, err := ds.Storage.(*MongoDB).Fetch(username)
   if err != nil {
@@ -157,8 +177,8 @@ func (ds *DataStore) TopMail(username string, id int) (headers string) {
   return string(out)
 }
 
-func (ds *DataStore) CheckUserExists(email string) bool {
-  user, err := ds.Storage.(*MongoDB).IsUserExists(email)
+func (ds *DataStore) CheckUserExists(username string) bool {
+  user, err := ds.Storage.(*MongoDB).IsUserExists(username)
   if err != nil {
     return false
   }

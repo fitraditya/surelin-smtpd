@@ -405,6 +405,13 @@ func parsePop3Config() error {
   }
   pop3Config.Domain = str
 
+  option = "max.clients"
+  pop3Config.MaxClients, err = Config.Int(section, option)
+  if err != nil {
+    pop3Config.MaxClients = 50
+    //return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
+  }
+
   option = "max.idle.seconds"
   pop3Config.MaxIdleSeconds, err = Config.Int(section, option)
   if err != nil {
