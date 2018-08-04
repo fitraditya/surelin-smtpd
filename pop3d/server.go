@@ -292,7 +292,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
   } else if cmd == "AUTH" {
     c.Write("-ERR unrecognized authentication type")
     return false
-  } else if cmd == "CAPA" || cmd == "UIDL" {
+  } else if cmd == "CAPA" || cmd == "UIDL" || cmd == "XTND" {
     c.Write("-ERR not implemented")
     return false
   } else if cmd == "QUIT" {
