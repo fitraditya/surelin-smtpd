@@ -274,6 +274,19 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     // Ending
     c.Write(".")
     return false
+  } else if cmd == "UIDL" && c.state == STATE_TRANSACTION {
+    c.logTrace("Uidl accepted")
+    nr, tot_size, Message_head := c.server.Store.ListMails(c.tmp_client)
+    c.Write("+OK " + strconv.Itoa(nr) + " messages (" + strconv.Itoa(tot_size) + " octets)")
+
+    // Print all messages
+    for _, val := range Message_head {
+      c.Write(strconv.Itoa(val.Id) + " " + val.Uid)
+    }
+
+    // Ending
+    c.Write(".")
+    return false
   } else if cmd == "RETR" && c.state == STATE_TRANSACTION  {
     id, _ := c.parseArgs(args, 0)
     i, _ := strconv.Atoi(id)
@@ -291,14 +304,17 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     c.Write("+OK top message follows")
     c.Write(headers + "\r\n\r\n.")
     return false
-  } else if cmd == "AUTH" {
-    c.Write("-ERR unrecognized authentication type")
-    return false
-  } else if cmd == "CAPA" || cmd == "UIDL" || cmd == "XTND" {
-    c.Write("-ERR not implemented")
+  } else if cmd == "CAPA" {
+    c.Write("TOP")
+    c.Write("UIDL")
+    // Ending
+    c.Write(".")
     return false
   } else if cmd == "QUIT" {
     return true
+  } else {
+    c.Write("-ERR not implemented")
+    return false
   }
 
   return false

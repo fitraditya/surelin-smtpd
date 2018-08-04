@@ -134,6 +134,7 @@ func (ds *DataStore) ListMails(username string) (nr int, size int, head []Messag
     sz = sz + len(m.Content.Body)*8
     mh := MessageHead{
       Id: i+1,
+      Uid: m.Id,
       Size: sz,
     }
     heads = append(heads, mh)

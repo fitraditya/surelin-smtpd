@@ -78,6 +78,7 @@ type Attachment struct {
 
 type MessageHead struct {
   Id    int
+  Uid   string
   Size  int
 }
 
