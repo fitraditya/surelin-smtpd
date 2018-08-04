@@ -281,6 +281,8 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     message, size := c.server.Store.GetMail(c.tmp_client, i)
     c.Write("+OK " + strconv.Itoa(size) + " octets")
     c.Write(message.Content.Body)
+    // Ending
+    c.Write(".")
     return false
   } else if cmd == "TOP" && c.state == STATE_TRANSACTION {
     arg, _ := c.parseArgs(args, 0)
