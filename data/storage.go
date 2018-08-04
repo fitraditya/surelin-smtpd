@@ -62,31 +62,36 @@ func (ds *DataStore) SaveMail() {
 
   for {
     mc := <-ds.SaveMailChan
-    msg := ParseSMTPMessage(mc, mc.Domain, ds.Config.MimeParser)
 
-    if ds.Config.Storage == "mongodb" {
-      mc.Hash, err = ds.Storage.(*MongoDB).Store(msg)
+    if mc.Domain != "surelin.fitraditya.com" {
+      // send smtp
+    } else {
+      msg := ParseSMTPMessage(mc, mc.Domain, ds.Config.MimeParser)
 
-      // if mongo conection is broken, try to reconnect only once
-      if err == io.EOF && !recon {
-        log.LogWarn("Connection error trying to reconnect")
-        ds.Storage = CreateMongoDB(ds.Config)
-        recon = true
-
-        // try to save again
+      if ds.Config.Storage == "mongodb" {
         mc.Hash, err = ds.Storage.(*MongoDB).Store(msg)
-      }
 
-      if err == nil {
-        recon = false
-        log.LogTrace("Save Mail Client hash : <%s>", mc.Hash)
-        mc.Notify <- 1
+        // if mongo conection is broken, try to reconnect only once
+        if err == io.EOF && !recon {
+          log.LogWarn("Connection error trying to reconnect")
+          ds.Storage = CreateMongoDB(ds.Config)
+          recon = true
 
-        // notify web socket
-        ds.NotifyMailChan <- mc.Hash
-      } else {
-        mc.Notify <- -1
-        log.LogError("Error storing message: %s", err)
+          // try to save again
+          mc.Hash, err = ds.Storage.(*MongoDB).Store(msg)
+        }
+
+        if err == nil {
+          recon = false
+          log.LogTrace("Save Mail Client hash : <%s>", mc.Hash)
+          mc.Notify <- 1
+
+          // notify web socket
+          ds.NotifyMailChan <- mc.Hash
+        } else {
+          mc.Notify <- -1
+          log.LogError("Error storing message: %s", err)
+        }
       }
     }
   }
