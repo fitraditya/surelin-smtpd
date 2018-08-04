@@ -27,9 +27,19 @@ Protocol Supported
 
 Features
 =========================================================
+* Built-in SMTP server
+* Built-in POP3 server
+* Built-in MTA
 * No installation required
 * Lightweight and portable
 * MongoDB storage for message persistence
+
+To Do
+=========================================================
+[ ] Support STARTTSL and SSL/TLS
+[ ] Built-in IMAP server
+[ ] Built-in web based mail client
+[ ] Admin interface (domain and user management)
 
 Building from Source
 =========================================================
