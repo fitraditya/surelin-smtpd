@@ -298,8 +298,8 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     c.Write(".")
     return false
   } else if cmd == "DELE" && c.state == STATE_TRANSACTION  {
-    id, _ := c.parseArgs(args, 0)
-    i, _ := strconv.Atoi(id)
+    //id, _ := c.parseArgs(args, 0)
+    //i, _ := strconv.Atoi(id)
     // Dummy delete from the server
     c.Write("+OK message deleted")
     return false
