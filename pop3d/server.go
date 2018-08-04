@@ -297,6 +297,12 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     // Ending
     c.Write(".")
     return false
+  } else if cmd == "DELE" && c.state == STATE_TRANSACTION  {
+    id, _ := c.parseArgs(args, 0)
+    i, _ := strconv.Atoi(id)
+    // Dummy delete from the server
+    c.Write("+OK " + strconv.Itoa(size) + " octets")
+    return false
   } else if cmd == "TOP" && c.state == STATE_TRANSACTION {
     arg, _ := c.parseArgs(args, 0)
     nr, _ := strconv.Atoi(arg)
