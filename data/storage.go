@@ -14,7 +14,7 @@ import (
 type DataStore struct {
   Config         config.DataStoreConfig
   Storage        interface{}
-  SaveMailChan   chan *config.SMTPMessage
+  SendMailChan   chan *config.SMTPMessage
   NotifyMailChan chan interface{}
 }
 
@@ -23,12 +23,12 @@ func NewDataStore() *DataStore {
   cfg := config.GetDataStoreConfig()
 
   // Database Writing
-  saveMailChan := make(chan *config.SMTPMessage, 256)
+  sendMailChan := make(chan *config.SMTPMessage, 256)
 
   // Websocket Notification
   notifyMailChan := make(chan interface{}, 256)
 
-  return &DataStore{Config: cfg, SaveMailChan: saveMailChan, NotifyMailChan: notifyMailChan}
+  return &DataStore{Config: cfg, SendMailChan: sendMailChan, NotifyMailChan: notifyMailChan}
 }
 
 func (ds *DataStore) StorageConnect() {
@@ -56,12 +56,12 @@ func (ds *DataStore) StorageDisconnect() {
 }
 
 func (ds *DataStore) SaveMail() {
-  log.LogTrace("Running SaveMail Routines")
+  log.LogTrace("Running SendMail Routines")
   var err error
   var recon bool
 
   for {
-    mc := <-ds.SaveMailChan
+    mc := <-ds.SendMailChan
 
     if mc.Domain != "surelin.fitraditya.com" {
       // send smtp

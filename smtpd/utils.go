@@ -10,18 +10,20 @@ import (
 )
 
 // Take "user+ext" and return "user", aka the mailbox we'll store it in
-// Return error if it contains invalid characters, we don't accept anything
+// return error if it contains invalid characters, we don't accept anything
 // that must be quoted according to RFC3696.
 func ParseMailboxName(localPart string) (result string, err error) {
   if localPart == "" {
     return "", fmt.Errorf("Mailbox name cannot be empty")
   }
+
   result = strings.ToLower(localPart)
 
   invalid := make([]byte, 0, 10)
 
   for i := 0; i < len(result); i++ {
     c := result[i]
+
     switch {
     case 'a' <= c && c <= 'z':
     case '0' <= c && c <= '9':
@@ -53,10 +55,13 @@ func JoinStringList(listOfStrings *list.List) string {
   if listOfStrings.Len() == 0 {
     return ""
   }
+
   s := make([]string, 0, listOfStrings.Len())
+
   for e := listOfStrings.Front(); e != nil; e = e.Next() {
     s = append(s, e.Value.(string))
   }
+
   return strings.Join(s, ",")
 }
 
@@ -65,12 +70,15 @@ func ValidateDomainPart(domain string) bool {
   if len(domain) == 0 {
     return false
   }
+
   if len(domain) > 255 {
     return false
   }
+
   if domain[len(domain)-1] != '.' {
     domain += "."
   }
+
   prev := '.'
   labelLen := 0
   hasAlphaNum := false
@@ -92,18 +100,22 @@ func ValidateDomainPart(domain string) bool {
         // Cannot end with hyphen or double-dot
         return false
       }
+
       if labelLen > 63 {
         return false
       }
+
       if !hasAlphaNum {
         return false
       }
+
       labelLen = 0
       hasAlphaNum = false
     default:
       // Unknown character
       return false
     }
+
     prev = c
   }
 
@@ -111,18 +123,20 @@ func ValidateDomainPart(domain string) bool {
 }
 
 // ParseEmailAddress unescapes an email address, and splits the local part from the domain part.
-// An error is returned if the local or domain parts fail validation following the guidelines
-// in RFC3696.
+// An error is returned if the local or domain parts fail validation following the guidelines in RFC3696.
 func ParseEmailAddress(address string) (local string, domain string, err error) {
   if address == "" {
     return "", "", fmt.Errorf("Empty address")
   }
+
   if len(address) > 320 {
     return "", "", fmt.Errorf("Address exceeds 320 characters")
   }
+
   if address[0] == '@' {
     return "", "", fmt.Errorf("Address cannot start with @ symbol")
   }
+
   if address[0] == '.' {
     return "", "", fmt.Errorf("Address cannot start with a period")
   }
@@ -132,9 +146,11 @@ func ParseEmailAddress(address string) (local string, domain string, err error) 
   prev := byte('.')
   inCharQuote := false
   inStringQuote := false
+
 LOOP:
   for i := 0; i < len(address); i++ {
     c := address[i]
+
     switch {
     case ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'):
       // Letters are OK
@@ -180,9 +196,11 @@ LOOP:
         if i > 63 {
           return "", "", fmt.Errorf("Local part must not exceed 64 characters")
         }
+
         if prev == '.' {
           return "", "", fmt.Errorf("Local part cannot end with a period")
         }
+
         domain = address[i+1:]
         break LOOP
       }
@@ -196,11 +214,14 @@ LOOP:
         return "", "", fmt.Errorf("Character %q must be quoted", c)
       }
     }
+
     prev = c
   }
+
   if inCharQuote {
     return "", "", fmt.Errorf("Cannot end address with unterminated quoted-pair")
   }
+
   if inStringQuote {
     return "", "", fmt.Errorf("Cannot end address with unterminated string quote")
   }
