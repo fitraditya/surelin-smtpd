@@ -28,8 +28,6 @@ type SmtpConfig struct {
   Ip4address      net.IP
   Ip4port         int
   Domain          string
-  AllowedHosts    string
-  TrustedHosts    string
   MaxRecipients   int
   MaxIdleSeconds  int
   MaxClients      int
@@ -38,9 +36,6 @@ type SmtpConfig struct {
   PrvKey          string
   StoreMessages   bool
   Xclient         bool
-  HostGreyList    bool
-  FromGreyList    bool
-  RcptGreyList    bool
   Debug           bool
   DebugPath       string
   SpamRegex       string
@@ -112,8 +107,7 @@ func GetDataStoreConfig() DataStoreConfig {
   return *dataStoreConfig
 }
 
-// LoadConfig loads the specified configuration file into inbucket.Config
-// and performs validations on it.
+// LoadConfig loads the specified configuration file. Config and performs validations on it.
 func LoadConfig(filename string) error {
   var err error
   Config, err = config.ReadDefault(filename)
@@ -129,11 +123,14 @@ func LoadConfig(filename string) error {
   requireSection(messages, "pop3")
   requireSection(messages, "web")
   requireSection(messages, "datastore")
+
   if messages.Len() > 0 {
     fmt.Fprintln(os.Stderr, "Error(s) validating configuration:")
+
     for e := messages.Front(); e != nil; e = e.Next() {
       fmt.Fprintln(os.Stderr, " -", e.Value.(string))
     }
+
     return fmt.Errorf("Failed to validate configuration")
   }
 
@@ -163,9 +160,11 @@ func LoadConfig(filename string) error {
   // Return error if validations failed
   if messages.Len() > 0 {
     fmt.Fprintln(os.Stderr, "Error(s) validating configuration:")
+
     for e := messages.Front(); e != nil; e = e.Next() {
       fmt.Fprintln(os.Stderr, " -", e.Value.(string))
     }
+
     return fmt.Errorf("Failed to validate configuration")
   }
 
@@ -191,17 +190,19 @@ func LoadConfig(filename string) error {
 // parseLoggingConfig trying to catch config errors early
 func parseLoggingConfig() error {
   section := "logging"
-
   option := "level"
   str, err := Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   switch strings.ToUpper(str) {
   case "TRACE", "INFO", "WARN", "ERROR":
   default:
     return fmt.Errorf("Invalid value provided for [%v]%v: '%v'", section, option, str)
   }
+
   return nil
 }
 
@@ -213,158 +214,142 @@ func parseSmtpConfig() error {
   // Parse IP4 address only, error on IP6.
   option := "ip4.address"
   str, err := Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   addr := net.ParseIP(str)
+
   if addr == nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   addr = addr.To4()
+
   if addr == nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v' not IPv4!", section, option, err)
   }
+
   smtpConfig.Ip4address = addr
 
   option = "ip4.port"
   smtpConfig.Ip4port, err = Config.Int(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "domain"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   smtpConfig.Domain = str
-
-  option = "allowed.hosts"
-  if Config.HasOption(section, option) {
-    str, err = Config.String(section, option)
-    if err != nil {
-      return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
-    }
-    smtpConfig.AllowedHosts = str
-  }
-
-  option = "trusted.hosts"
-  if Config.HasOption(section, option) {
-    str, err = Config.String(section, option)
-    if err != nil {
-      return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
-    }
-    smtpConfig.TrustedHosts = str
-  }
 
   option = "public.key"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   smtpConfig.PubKey = str
 
   option = "private.key"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   smtpConfig.PrvKey = str
 
   option = "max.clients"
   smtpConfig.MaxClients, err = Config.Int(section, option)
+
   if err != nil {
     smtpConfig.MaxClients = 50
-    //return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "max.recipients"
   smtpConfig.MaxRecipients, err = Config.Int(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "max.idle.seconds"
   smtpConfig.MaxIdleSeconds, err = Config.Int(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "max.message.bytes"
   smtpConfig.MaxMessageBytes, err = Config.Int(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "store.messages"
   flag, err := Config.Bool(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   smtpConfig.StoreMessages = flag
 
   option = "xclient"
   flag, err = Config.Bool(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   smtpConfig.Xclient = flag
 
-  option = "greylist.host"
-  if Config.HasOption(section, option) {
-    flag, err = Config.Bool(section, option)
-    if err != nil {
-      return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
-    }
-    smtpConfig.HostGreyList = flag
-  }
-
-  option = "greylist.from"
-  if Config.HasOption(section, option) {
-    flag, err = Config.Bool(section, option)
-    if err != nil {
-      return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
-    }
-    smtpConfig.FromGreyList = flag
-  }
-
-  option = "greylist.to"
-  if Config.HasOption(section, option) {
-    flag, err = Config.Bool(section, option)
-    if err != nil {
-      return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
-    }
-    smtpConfig.RcptGreyList = flag
-  }
-
   option = "debug"
+
   if Config.HasOption(section, option) {
     flag, err = Config.Bool(section, option)
+
     if err != nil {
       return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
     }
+
     smtpConfig.Debug = flag
   } else {
     smtpConfig.Debug = false
   }
 
   option = "debug.path"
+
   if Config.HasOption(section, option) {
     str, err := Config.String(section, option)
+
     if err != nil {
       return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
     }
+
     smtpConfig.DebugPath = str
   } else {
     smtpConfig.DebugPath = "/tmp/smtpd"
   }
 
   option = "spam.regex"
+
   if Config.HasOption(section, option) {
     str, err := Config.String(section, option)
+
     if err != nil {
       return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
     }
+
     smtpConfig.SpamRegex = str
   }
 
@@ -379,62 +364,78 @@ func parsePop3Config() error {
   // Parse IP4 address only, error on IP6.
   option := "ip4.address"
   str, err := Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   addr := net.ParseIP(str)
+
   if addr == nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   addr = addr.To4()
+
   if addr == nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v' not IPv4!", section, option, err)
   }
+
   pop3Config.Ip4address = addr
 
   option = "ip4.port"
   pop3Config.Ip4port, err = Config.Int(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "domain"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   pop3Config.Domain = str
 
   option = "max.clients"
   pop3Config.MaxClients, err = Config.Int(section, option)
+
   if err != nil {
     pop3Config.MaxClients = 50
-    //return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "max.idle.seconds"
   pop3Config.MaxIdleSeconds, err = Config.Int(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "debug"
+
   if Config.HasOption(section, option) {
     flag, err := Config.Bool(section, option)
+
     if err != nil {
       return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
     }
+
     pop3Config.Debug = flag
   } else {
     pop3Config.Debug = false
   }
 
   option = "debug.path"
+
   if Config.HasOption(section, option) {
     str, err := Config.String(section, option)
+
     if err != nil {
       return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
     }
+
     pop3Config.DebugPath = str
   } else {
     pop3Config.DebugPath = "/tmp/smtpd"
@@ -451,98 +452,125 @@ func parseWebConfig() error {
   // Parse IP4 address only, error on IP6.
   option := "ip4.address"
   str, err := Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   addr := net.ParseIP(str)
+
   if addr == nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   addr = addr.To4()
+
   if addr == nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v' not IPv4!", section, option, err)
   }
+
   webConfig.Ip4address = addr
 
   option = "ip4.port"
   webConfig.Ip4port, err = Config.Int(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "template.dir"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   webConfig.TemplateDir = str
 
   option = "template.cache"
   flag, err := Config.Bool(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   webConfig.TemplateCache = flag
 
   option = "public.dir"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   webConfig.PublicDir = str
 
   option = "greeting.file"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   webConfig.GreetingFile = str
 
   option = "cookie.secret"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   webConfig.CookieSecret = str
 
   option = "client.broadcasts"
   flag, err = Config.Bool(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   webConfig.ClientBroadcasts = flag
 
   option = "redis.enabled"
   flag, err = Config.Bool(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   webConfig.RedisEnabled = flag
 
   option = "connection.timeout"
   webConfig.ConnTimeout, err = Config.Int(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "redis.host"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   webConfig.RedisHost = str
 
   option = "redis.port"
   webConfig.RedisPort, err = Config.Int(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
 
   option = "redis.channel"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   webConfig.RedisChannel = str
 
   return nil
@@ -554,11 +582,14 @@ func parseDataStoreConfig() error {
   section := "datastore"
 
   option := "mime.parser"
+
   if Config.HasOption(section, option) {
     flag, err := Config.Bool(section, option)
+
     if err != nil {
       return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
     }
+
     dataStoreConfig.MimeParser = flag
   } else {
     dataStoreConfig.MimeParser = true
@@ -566,45 +597,51 @@ func parseDataStoreConfig() error {
 
   option = "storage"
   str, err := Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   dataStoreConfig.Storage = str
 
   option = "mongo.uri"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   dataStoreConfig.MongoUri = str
 
   option = "mongo.db"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   dataStoreConfig.MongoDb = str
 
   option = "mongo.coll"
   str, err = Config.String(section, option)
+
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
+
   dataStoreConfig.MongoColl = str
 
   return nil
 }
 
-// requireSection checks that a [section] is defined in the configuration file,
-// appending a message if not.
+// requireSection checks that a [section] is defined in the configuration file, appending a message if not.
 func requireSection(messages *list.List, section string) {
   if !Config.HasSection(section) {
     messages.PushBack(fmt.Sprintf("Config section [%v] is required", section))
   }
 }
 
-// requireOption checks that 'option' is defined in [section] of the config file,
-// appending a message if not.
+// requireOption checks that 'option' is defined in [section] of the config file, appending a message if not.
 func requireOption(messages *list.List, section string, option string) {
   if !Config.HasOption(section, option) {
     messages.PushBack(fmt.Sprintf("Config option '%v' is required in section [%v]", option, section))
