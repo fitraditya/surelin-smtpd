@@ -72,6 +72,8 @@ func (md *Mailer) SendMail(id int) {
           log.LogError("Cannot not send message")
           return
         }
+
+        mc.Notify <- 1
       }
     }
   }
