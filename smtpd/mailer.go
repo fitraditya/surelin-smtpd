@@ -59,14 +59,14 @@ func (md *Mailer) SendMail(id int) {
           return
         }
 
-        _, err = newClient(addr, ports)
+        c, err := newClient(addr, ports)
 
         if err != nil {
           log.LogError("Cannot not create SMTP client")
           return
         }
 
-        //err = send(msg, c)
+        err = send(c, mc.From, mc.To[i], mc.Data)
 
         if err != nil {
           log.LogError("Cannot not send message")
@@ -99,24 +99,22 @@ func newClient(mx []*net.MX, ports []int) (*smtp.Client, error) {
   return nil, fmt.Errorf("Couldn't connect to servers %v on any common port", mx)
 }
 
-/*
-func send(m *data.Message, c *smtp.Client) error {
-  from := fmt.Sprintf("%s@%s", m.From.Mailbox, m.From.Domain)
-
+func send(c *smtp.Client, from string, to string, msg string) error {
   if err := c.Mail(from); err != nil {
     return err
   }
 
-  if err := c.Rcpt(m.To); err != nil {
+  if err := c.Rcpt(to); err != nil {
     return err
   }
 
-  msg, err := c.Data()
+  m, err := c.Data()
 
   if err != nil {
     return err
   }
 
+  /*
   if m.Subject != "" {
     _, err = msg.Write([]byte("Subject: " + m.Subject + "\r\n"))
 
@@ -140,14 +138,15 @@ func send(m *data.Message, c *smtp.Client) error {
       return err
     }
   }
+  */
 
-  _, err = fmt.Fprint(msg, m.Content.Body)
+  _, err = fmt.Fprint(m, msg)
 
   if err != nil {
     return err
   }
 
-  err = msg.Close()
+  err = m.Close()
 
   if err != nil {
     return err
@@ -161,4 +160,3 @@ func send(m *data.Message, c *smtp.Client) error {
 
   return nil
 }
-*/
