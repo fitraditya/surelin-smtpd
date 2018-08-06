@@ -38,6 +38,7 @@ var (
 
   // Server instances
   ds *data.DataStore
+  md *smtpd.Mailer
   smtpServer *smtpd.Server
   pop3Server *pop3d.Server
 
@@ -120,6 +121,10 @@ func main() {
   ds = data.NewDataStore()
   ds.StorageConnect()
 
+  // Start mailer daemon
+  md = smtpd.NewMailer(ds)
+  md.Start()
+
   // Start HTTP server
   web.Initialize(config.GetWebConfig(), ds)
   go web.Start()
@@ -137,7 +142,7 @@ func main() {
 }
 
 func runSmtpd() {
-  smtpServer = smtpd.NewSmtpServer(config.GetSmtpConfig(), ds)
+  smtpServer = smtpd.NewSmtpServer(config.GetSmtpConfig(), ds, md)
   smtpServer.Start()
   smtpServer.Drain()
 }

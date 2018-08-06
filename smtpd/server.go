@@ -38,6 +38,7 @@ var commands = map[string]bool{
 
 type Server struct {
   Store           *data.DataStore
+  Mailer          *Mailer
   domain          string
   maxRecips       int
   maxIdleSeconds  int
@@ -57,22 +58,23 @@ type Server struct {
 }
 
 // Init a new Server object
-func NewSmtpServer(cfg config.SmtpConfig, ds *data.DataStore) *Server {
+func NewSmtpServer(cfg config.SmtpConfig, ds *data.DataStore, md *Mailer) *Server {
   // sem is an active clients channel used for counting clients
   maxClients := make(chan int, cfg.MaxClients)
 
   return &Server{
-    Store:           ds,
-    domain:          cfg.Domain,
-    maxRecips:       cfg.MaxRecipients,
-    maxIdleSeconds:  cfg.MaxIdleSeconds,
-    maxMessageBytes: cfg.MaxMessageBytes,
-    storeMessages:   cfg.StoreMessages,
-    waitgroup:       new(sync.WaitGroup),
-    Debug:           cfg.Debug,
-    DebugPath:       cfg.DebugPath,
-    sem:             maxClients,
-    SpamRegex:       cfg.SpamRegex,
+    Store:            ds,
+    Mailer:           md,
+    domain:           cfg.Domain,
+    maxRecips:        cfg.MaxRecipients,
+    maxIdleSeconds:   cfg.MaxIdleSeconds,
+    maxMessageBytes:  cfg.MaxMessageBytes,
+    storeMessages:    cfg.StoreMessages,
+    waitgroup:        new(sync.WaitGroup),
+    Debug:            cfg.Debug,
+    DebugPath:        cfg.DebugPath,
+    sem:              maxClients,
+    SpamRegex:        cfg.SpamRegex,
   }
 }
 

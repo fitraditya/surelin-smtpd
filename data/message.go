@@ -85,6 +85,7 @@ type MessageHead struct {
 // TODO support nested MIME content
 func ParseSMTPMessage(m *config.SMTPMessage, hostname string, mimeParser bool) *Message {
   arr := make([]*Path, 0)
+
   for _, path := range m.To {
     arr = append(arr, PathFromString(path))
   }

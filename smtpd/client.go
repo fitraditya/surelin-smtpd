@@ -421,8 +421,9 @@ func (c *Client) processData() {
       mc.Host = c.remoteHost
       mc.Domain = c.server.domain
       mc.Notify = make(chan int)
-      // Send to send mail channel
-      c.server.Store.SendMailChan <- mc
+
+      // Process to send mail channel
+      c.server.Mailer.SendMailChan <- mc
 
       select {
       // Wait for the save to complete
@@ -451,7 +452,6 @@ func (c *Client) processData() {
 
 func (c *Client) enterState(state State) {
   c.state = state
-  c.logInfo("Entering state %v", state)
 }
 
 func (c *Client) greet() {
