@@ -3,17 +3,12 @@ package pop3d
 import (
   "bufio"
   "fmt"
-  "io"
   "net"
-  "runtime"
   "strconv"
   "strings"
-  "sync"
   "time"
   "errors"
 
-  "github.com/fitraditya/surelin-smtpd/config"
-  "github.com/fitraditya/surelin-smtpd/data"
   "github.com/fitraditya/surelin-smtpd/log"
 )
 
@@ -47,21 +42,21 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
   c.logTrace(line)
 
   if cmd == "USER" && c.state == UNAUTHORIZED {
-    c.tmp_client, _ = c.parseArgs(args, 0)
+    c.email, _ = c.parseArgs(args, 0)
 
-    if c.server.Store.CheckUserExists(c.tmp_client) {
+    if c.server.Store.CheckUserExists(c.email) {
       c.Write("+OK name is a valid mailbox")
       c.logTrace(">+OK name is a valid mailbox")
     } else {
-      c.Write("-ERR never heard of mailbox name " + c.tmp_client)
-      c.logTrace(">-ERR never heard of mailbox name " + c.tmp_client)
+      c.Write("-ERR never heard of mailbox name " + c.email)
+      c.logTrace(">-ERR never heard of mailbox name " + c.email)
     }
 
     return false
   } else if cmd == "PASS" && c.state == UNAUTHORIZED {
     pass, _ := c.parseArgs(args, 0)
 
-    if c.server.Store.LoginUser(c.tmp_client, pass) {
+    if c.server.Store.LoginUser(c.email, pass) {
       c.Write("+OK mailbox ready")
       c.logTrace(">+OK mailbox ready")
       c.enterState(TRANSACTION)
@@ -72,11 +67,11 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
 
     return false
   } else if cmd == "STAT" && c.state == TRANSACTION {
-    nr_messages, size_messages := c.server.Store.StatMails(c.tmp_client)
+    nr_messages, size_messages := c.server.Store.StatMails(c.email)
     c.Write("+OK " + strconv.Itoa(nr_messages) + " " + strconv.Itoa(size_messages))
     c.logTrace(">+OK " + strconv.Itoa(nr_messages) + " " + strconv.Itoa(size_messages))
   } else if cmd == "LIST" && c.state == TRANSACTION {
-    nr, tot_size, Message_head := c.server.Store.ListMails(c.tmp_client)
+    nr, tot_size, Message_head := c.server.Store.ListMails(c.email)
     c.Write("+OK " + strconv.Itoa(nr) + " messages (" + strconv.Itoa(tot_size) + " octets)")
     c.logTrace(">+OK " + strconv.Itoa(nr) + " messages (" + strconv.Itoa(tot_size) + " octets)")
 
@@ -89,7 +84,7 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     c.Write(".")
     return false
   } else if cmd == "UIDL" && c.state == TRANSACTION {
-    nr, tot_size, Message_head := c.server.Store.ListMails(c.tmp_client)
+    nr, tot_size, Message_head := c.server.Store.ListMails(c.email)
     c.Write("+OK " + strconv.Itoa(nr) + " messages (" + strconv.Itoa(tot_size) + " octets)")
     c.logTrace(">+OK " + strconv.Itoa(nr) + " messages (" + strconv.Itoa(tot_size) + " octets)")
 
@@ -105,23 +100,22 @@ func (c *Client) handle(cmd string, args []string, line string) (ret bool) {
     id, _ := c.parseArgs(args, 0)
     i, _ := strconv.Atoi(id)
     // Retreive one message but don't delete it from the server
-    message, size := c.server.Store.GetMail(c.tmp_client, i)
+    message, size := c.server.Store.GetMail(c.email, i)
     c.Write("+OK " + strconv.Itoa(size) + " octets")
     c.Write(message.Content.Body)
     // Ending
     c.Write(".")
     return false
   } else if cmd == "DELE" && c.state == TRANSACTION  {
-    id, _ := c.parseArgs(args, 0)
-    i, _ := strconv.Atoi(id)
-    c.server.Store
+    //id, _ := c.parseArgs(args, 0)
+    //i, _ := strconv.Atoi(id)
     c.Write("+OK message deleted")
     c.logTrace(">+OK message deleted")
     return false
   } else if cmd == "TOP" && c.state == TRANSACTION {
     arg, _ := c.parseArgs(args, 0)
     nr, _ := strconv.Atoi(arg)
-    headers := c.server.Store.TopMail(c.tmp_client, nr)
+    headers := c.server.Store.TopMail(c.email, nr)
     c.Write("+OK top message follows")
     c.Write(headers + "\r\n\r\n.")
     return false

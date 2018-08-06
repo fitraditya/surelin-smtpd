@@ -7,10 +7,8 @@ import (
   "net"
   "runtime"
   "strconv"
-  "strings"
   "sync"
   "time"
-  "errors"
 
   "github.com/fitraditya/surelin-smtpd/config"
   "github.com/fitraditya/surelin-smtpd/data"
