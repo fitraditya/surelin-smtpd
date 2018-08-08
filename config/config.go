@@ -60,10 +60,6 @@ type WebConfig struct {
   GreetingFile     string
   ClientBroadcasts bool
   ConnTimeout      int
-  RedisEnabled     bool
-  RedisHost        string
-  RedisPort        int
-  RedisChannel     string
   CookieSecret     string
 }
 
@@ -532,46 +528,12 @@ func parseWebConfig() error {
 
   webConfig.ClientBroadcasts = flag
 
-  option = "redis.enabled"
-  flag, err = Config.Bool(section, option)
-
-  if err != nil {
-    return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
-  }
-
-  webConfig.RedisEnabled = flag
-
   option = "connection.timeout"
   webConfig.ConnTimeout, err = Config.Int(section, option)
 
   if err != nil {
     return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
   }
-
-  option = "redis.host"
-  str, err = Config.String(section, option)
-
-  if err != nil {
-    return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
-  }
-
-  webConfig.RedisHost = str
-
-  option = "redis.port"
-  webConfig.RedisPort, err = Config.Int(section, option)
-
-  if err != nil {
-    return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
-  }
-
-  option = "redis.channel"
-  str, err = Config.String(section, option)
-
-  if err != nil {
-    return fmt.Errorf("Failed to parse [%v]%v: '%v'", section, option, err)
-  }
-
-  webConfig.RedisChannel = str
 
   return nil
 }

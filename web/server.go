@@ -48,7 +48,6 @@ func setupWebSocket(cfg config.WebConfig, ds *data.DataStore) {
 
 	mymap["client_broadcasts"] = strconv.FormatBool(cfg.ClientBroadcasts)
 	mymap["connection_timeout"] = strconv.Itoa(cfg.ConnTimeout)
-	mymap["redis_enabled"] = strconv.FormatBool(cfg.RedisEnabled)
 	mymap["debug"] = "true"
 
 	conf := incus.InitConfig(mymap)
@@ -66,7 +65,6 @@ func setupWebSocket(cfg config.WebConfig, ds *data.DataStore) {
 		}
 	}()
 
-	go Websocket.RedisListener()
 	go Websocket.SendHeartbeats()
 }
 

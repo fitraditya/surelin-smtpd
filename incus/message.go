@@ -1,7 +1,6 @@
 package incus
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"strings"
@@ -35,11 +34,6 @@ func (this *CommandMsg) FromSocket(sock *Socket) {
 			return
 		}
 
-		if sock.Server.Store.StorageType == "redis" {
-			this.forwardToRedis(sock.Server)
-			return
-		}
-
 		this.sendMessage(sock.Server)
 
 	case "setpage":
@@ -54,23 +48,6 @@ func (this *CommandMsg) FromSocket(sock *Socket) {
 
 		sock.Page = page
 		sock.Server.Store.SetPage(sock) // set new page
-	}
-}
-
-func (this *CommandMsg) FromRedis(server *Server) {
-	command, ok := this.Command["command"]
-	if !ok {
-		return
-	}
-
-	if DEBUG {
-		log.Printf("Handling redis message of type %s\n", command)
-	}
-
-	switch strings.ToLower(command) {
-
-	case "message":
-		this.sendMessage(server)
 	}
 }
 
@@ -182,9 +159,4 @@ func (this *CommandMsg) messagePage(page string, server *Server) {
 	}
 
 	return
-}
-
-func (this *CommandMsg) forwardToRedis(server *Server) {
-	msg_str, _ := json.Marshal(this)
-	server.Store.redis.Publish(server.Config.Get("redis_message_channel"), string(msg_str)) //pass the message into redis to send message across cluster
 }

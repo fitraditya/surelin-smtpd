@@ -168,31 +168,6 @@ func (this *Server) LongPollListener(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (this *Server) RedisListener() {
-	if !this.Config.GetBool("redis_enabled") {
-		return
-	}
-
-	rec := make(chan []string, 10000)
-	consumer, err := this.Store.redis.Subscribe(rec, this.Config.Get("redis_message_channel"))
-	if err != nil {
-		log.Fatal("Couldn't subscribe to redis channel")
-	}
-	defer consumer.Quit()
-
-	if this.Debug {
-		log.Println("LISENING FOR REDIS MESSAGE")
-	}
-	var ms []string
-	for {
-		ms = <-rec
-
-		var cmd = new(CommandMsg)
-		json.Unmarshal([]byte(ms[2]), cmd)
-		go cmd.FromRedis(this)
-	}
-}
-
 func (this *Server) AppListener(msg interface{}) {
 	if this.Debug {
 		log.Printf("LISENING FOR APP MESSAGE %v\n", msg)
