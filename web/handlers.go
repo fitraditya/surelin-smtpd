@@ -295,33 +295,10 @@ func GreyMailFromAdd(w http.ResponseWriter, r *http.Request, ctx *Context) (err 
 	}
 
 	// we need to load email
-	m, err := ctx.Ds.Load(id)
+	_, err = ctx.Ds.Load(id)
 	if err != nil {
 		log.LogTrace("Greylist mail Id not found %s", id)
 		http.NotFound(w, r)
-		return
-	}
-
-	e := fmt.Sprintf("%s@%s", m.From.Mailbox, m.From.Domain)
-	if to, _ := ctx.Ds.IsGreyMail(e, "from"); to == 0 {
-		log.LogTrace("Greylist inserting mail %s", e)
-		gm := data.GreyMail{
-			Id:        bson.NewObjectId(),
-			CreatedBy: ctx.User.Id.Hex(),
-			CreatedAt: time.Now(),
-			IsActive:  true,
-			Email:     e,
-			Local:     m.From.Mailbox,
-			Domain:    m.From.Domain,
-			Type:      "from",
-		}
-
-		if err = ctx.Ds.Emails.Insert(gm); err != nil {
-			log.LogError("Error inserting grey list: %s", err)
-			http.NotFound(w, r)
-			return
-		}
-
 		return
 	}
 
@@ -347,32 +324,9 @@ func GreyMailToAdd(w http.ResponseWriter, r *http.Request, ctx *Context) (err er
 	}
 
 	// we need to load email
-	m, err := ctx.Ds.Load(id)
+	_, err = ctx.Ds.Load(id)
 	if err != nil {
 		http.NotFound(w, r)
-		return
-	}
-
-	e := fmt.Sprintf("%s@%s", m.From.Mailbox, m.From.Domain)
-	if to, _ := ctx.Ds.IsGreyMail(e, "to"); to == 0 {
-		log.LogTrace("Greylist inserting mail %s", e)
-		gm := data.GreyMail{
-			Id:        bson.NewObjectId(),
-			CreatedBy: ctx.User.Id.Hex(),
-			CreatedAt: time.Now(),
-			IsActive:  true,
-			Email:     e,
-			Local:     m.From.Mailbox,
-			Domain:    m.From.Domain,
-			Type:      "to",
-		}
-
-		if err = ctx.Ds.Emails.Insert(gm); err != nil {
-			log.LogError("Error inserting grey list: %s", err)
-			http.NotFound(w, r)
-			return
-		}
-
 		return
 	}
 

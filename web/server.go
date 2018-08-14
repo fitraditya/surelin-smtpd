@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -45,9 +44,6 @@ func Initialize(cfg config.WebConfig, ds *data.DataStore) {
 // Initialize websocket from incus
 func setupWebSocket(cfg config.WebConfig, ds *data.DataStore) {
 	mymap := make(map[string]string)
-
-	mymap["client_broadcasts"] = strconv.FormatBool(cfg.ClientBroadcasts)
-	mymap["connection_timeout"] = strconv.Itoa(cfg.ConnTimeout)
 	mymap["debug"] = "true"
 
 	conf := incus.InitConfig(mymap)
@@ -55,15 +51,6 @@ func setupWebSocket(cfg config.WebConfig, ds *data.DataStore) {
 	Websocket = incus.CreateServer(&conf, store)
 
 	log.LogInfo("Incus Websocket Init")
-
-	go func() {
-		for {
-			select {
-			case msg := <-ds.NotifyMailChan:
-				go Websocket.AppListener(msg)
-			}
-		}
-	}()
 
 	go Websocket.SendHeartbeats()
 }
