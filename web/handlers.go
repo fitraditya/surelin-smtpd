@@ -168,12 +168,12 @@ func LoginForm(w http.ResponseWriter, req *http.Request, ctx *Context) (err erro
 
 func Login(w http.ResponseWriter, req *http.Request, ctx *Context) error {
 	l := &data.LoginForm{
-		Username: req.FormValue("username"),
+		Email:    req.FormValue("email"),
 		Password: req.FormValue("password"),
 	}
 
 	if l.Validate() {
-		u, err := ctx.Ds.Login(l.Username, l.Password)
+		u, err := ctx.Ds.Login(l.Email, l.Password)
 
 		if err == nil {
 			//store the user id in the values and redirect to index
@@ -229,13 +229,13 @@ func Register(w http.ResponseWriter, req *http.Request, ctx *Context) error {
 	}
 
 	r := &data.LoginForm{
-		Username: req.FormValue("username"),
+		Email:    req.FormValue("email"),
 		Password: req.FormValue("password"),
 	}
 
 	if r.Validate() {
 		result := &data.User{}
-		err := ctx.Ds.Users.Find(bson.M{"username": r.Username}).One(&result)
+		err := ctx.Ds.Users.Find(bson.M{"email": r.Email}).One(&result)
 		if err == nil {
 			ctx.Session.AddFlash("User already exists!")
 			return RegisterForm(w, req, ctx)
@@ -246,7 +246,6 @@ func Register(w http.ResponseWriter, req *http.Request, ctx *Context) error {
 			Firstname:   req.FormValue("firstname"),
 			Lastname:    req.FormValue("lastname"),
 			Email:       req.FormValue("email"),
-			Username:    r.Username,
 			IsActive:    true,
 			JoinedAt:    time.Now(),
 			LastLoginIp: ctx.ClientIp,
