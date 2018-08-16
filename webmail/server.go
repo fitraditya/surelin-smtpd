@@ -1,7 +1,7 @@
 /*
-	The web package contains all the code to provide SMTPD's web GUI
+	The web package contains all the code to provide Surelin's web GUI
 */
-package web
+package webmail
 
 import (
 	"fmt"
@@ -45,20 +45,16 @@ func Initialize(cfg config.WebConfig, ds *data.DataStore) {
 func setupWebSocket(cfg config.WebConfig, ds *data.DataStore) {
 	mymap := make(map[string]string)
 	mymap["debug"] = "true"
-
 	conf := incus.InitConfig(mymap)
 	store := incus.InitStore(&conf)
 	Websocket = incus.CreateServer(&conf, store)
-
 	log.LogInfo("Incus Websocket Init")
-
 	go Websocket.SendHeartbeats()
 }
 
 func setupRoutes(cfg config.WebConfig) {
 	log.LogInfo("Theme templates mapped to '%v'", cfg.TemplateDir)
 	log.LogInfo("Theme static content mapped to '%v'", cfg.PublicDir)
-
 	r := mux.NewRouter()
 
 	// Static content
@@ -81,11 +77,6 @@ func setupRoutes(cfg config.WebConfig) {
 	r.Path("/logout").Handler(handler(Logout)).Name("Logout").Methods("GET")
 	r.Path("/register").Handler(handler(Register)).Methods("POST")
 	r.Path("/register").Handler(handler(RegisterForm)).Name("Register").Methods("GET")
-
-	// Add to greylist
-	r.Path("/greylist/host/{id:[0-9a-z]+}").Handler(handler(MailView)).Name("GreyHostAdd").Methods("GET")
-	r.Path("/greylist/mailfrom/{id:[0-9a-z]+}").Handler(handler(GreyMailFromAdd)).Name("GreyMailFromAdd").Methods("GET")
-	r.Path("/greylist/tomail/{id:[0-9a-z]+}").Handler(handler(GreyMailFromAdd)).Name("GreyMailToAdd").Methods("GET")
 
 	// Nginx Xclient auth
 	r.Path("/auth-smtp").Handler(handler(NginxHTTPAuth)).Name("Nginx")
@@ -114,6 +105,7 @@ func Start() {
 	log.LogInfo("HTTP listening on TCP4 %v", addr)
 	var err error
 	listener, err = net.Listen("tcp", addr)
+
 	if err != nil {
 		log.LogError("HTTP failed to start TCP4 listener: %v", err)
 		// TODO More graceful early-shutdown procedure
@@ -121,6 +113,7 @@ func Start() {
 	}
 
 	err = server.Serve(listener)
+
 	if shutdown {
 		log.LogTrace("HTTP server shutting down on request")
 	} else if err != nil {
@@ -131,6 +124,7 @@ func Start() {
 func Stop() {
 	log.LogTrace("HTTP shutdown requested")
 	shutdown = true
+
 	if listener != nil {
 		listener.Close()
 	} else {
@@ -142,17 +136,20 @@ func Stop() {
 func (h handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Create the context
 	ctx, err := NewContext(req)
+
 	if err != nil {
 		log.LogError("Failed to create context: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	defer ctx.Close()
 
 	// Run the handler, grab the error, and report it
 	buf := new(httpbuf.Buffer)
 	log.LogTrace("Web: %v %v %v %v", parseRemoteAddr(req), req.Proto, req.Method, req.RequestURI)
 	err = h(buf, req, ctx)
+
 	if err != nil {
 		log.LogError("Error handling %v: %v", req.RequestURI, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -182,13 +179,14 @@ func parseRemoteAddr(r *http.Request) string {
 	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 		// X-Forwarded-For is potentially a list of addresses separated with ","
 		parts := strings.Split(forwarded, ",")
+
 		for i, p := range parts {
 			parts[i] = strings.TrimSpace(p)
 		}
 
 		// TODO: should return first non-local address
-		return parts[0]
 		//return forwarded
+		return parts[0]
 	}
 
 	return r.RemoteAddr

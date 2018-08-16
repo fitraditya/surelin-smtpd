@@ -1,4 +1,4 @@
-package web
+package webmail
 
 import (
 	"net/http"
@@ -57,7 +57,7 @@ func NewContext(req *http.Request) (*Context, error) {
 		return ctx, err
 	}
 
-	//try to fill in the user from the session
+	// Try to fill in the user from the session
 	if user, ok := sess.Values["user"].(string); ok {
 		if bson.IsObjectIdHex(user) {
 			uid := bson.ObjectIdHex(user)

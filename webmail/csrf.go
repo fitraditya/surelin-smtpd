@@ -1,5 +1,5 @@
 // Package xsrftoken provides methods for generating and validating secure XSRF tokens.
-package web
+package webmail
 
 import (
 	"bytes"
@@ -50,19 +50,24 @@ func (c *CSRF) Valid(token string) bool {
 func (c *CSRF) validTokenAtTime(token, key, userID, actionID string, now time.Time) bool {
 	// Decode the token.
 	data, err := base64.URLEncoding.DecodeString(token)
+
 	if err != nil {
 		return false
 	}
 
 	// Extract the issue time of the token.
 	sep := bytes.LastIndex(data, []byte{':'})
+
 	if sep < 0 {
 		return false
 	}
+
 	nanos, err := strconv.ParseInt(string(data[sep+1:]), 10, 64)
+
 	if err != nil {
 		return false
 	}
+
 	issueTime := time.Unix(0, nanos)
 
 	// Check that the token is not expired.
